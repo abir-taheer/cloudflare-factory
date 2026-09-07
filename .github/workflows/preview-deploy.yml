@@ -10,6 +10,7 @@ permissions:
 # All mutations serialize; the R2 conditional lock also excludes local Docker runs.
 concurrency:
   group: cloudflare-preview-lifecycle
+  queue: max
   cancel-in-progress: false
 jobs:
   deploy:
