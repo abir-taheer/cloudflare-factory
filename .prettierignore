@@ -1,0 +1,10 @@
+**/node_modules/**
+**/dist/**
+/build/**
+/apps/*/build/**
+/packages/*/build/**
+**/coverage/**
+**/.wrangler/**
+**/.turbo/**
+**/worker-configuration.d.ts
+package-lock.json

@@ -1,0 +1,21 @@
+{
+  "name": "@factory/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./http": "./src/http.ts"
+  },
+  "scripts": {
+    "generate": "tsx scripts/node-generate.ts",
+    "check:generated": "tsx scripts/node-generate.ts --check",
+    "check": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "orval": "8.24.0"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "5.100.14"
+  }
+}

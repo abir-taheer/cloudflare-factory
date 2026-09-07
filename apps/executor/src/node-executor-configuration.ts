@@ -1,14 +1,35 @@
-import { Config, ConfigProvider, Effect, Schema } from 'effect';
+import { Data, Effect } from "effect";
+import { z } from "zod";
 
-const executorEnvironmentConfig = Config.schema(Schema.Struct({
-  ENVIRONMENT:Schema.Literals(['dev', 'preview', 'prod']),
-  EXECUTOR_TOKEN:Schema.String.check(Schema.isMinLength(20), Schema.isPattern(/^\S+$/u)),
-}).check(Schema.makeFilter((value) => value.ENVIRONMENT === 'dev' || value.EXECUTOR_TOKEN !== 'local-executor-development-only')));
+/** Invalid executor configuration excludes credential values and parser causes. */
+export class ExecutorConfigurationError extends Data.TaggedError("ExecutorConfigurationError")<
+  Record<never, never>
+> {}
 
-/** Validate executor scalars at startup; configuration errors never include token values. */
-export const parseExecutorConfiguration = (provider: ConfigProvider.ConfigProvider) => executorEnvironmentConfig.parse(provider).pipe(
-  Effect.mapError(() => new Error('Invalid executor environment: require ENVIRONMENT dev/preview/prod and a non-whitespace EXECUTOR_TOKEN of at least 20 characters; local token is dev-only')),
-);
+const executorTokenMinimumLength = 20;
 
-/** Runtime configuration has no credential fallback and uses the same names in every deployment. */
-export const readExecutorConfiguration = () => Effect.runSync(parseExecutorConfiguration(ConfigProvider.fromEnv()));
+const ExecutorEnvironmentSchema = z
+  .object({
+    ENVIRONMENT: z.enum(["dev", "preview", "prod"]),
+    EXECUTOR_TOKEN: z.string().min(executorTokenMinimumLength).regex(/^\S+$/u),
+  })
+  .refine(
+    (value) =>
+      value.ENVIRONMENT === "dev" || value.EXECUTOR_TOKEN !== "local-executor-development-only",
+  );
+
+/** Validate executor scalars without retaining invalid input in the failure. */
+export const parseExecutorConfiguration = (input: unknown) =>
+  Effect.suspend(() => {
+    const result = ExecutorEnvironmentSchema.safeParse(input);
+
+    if (!result.success) {
+      return Effect.fail(new ExecutorConfigurationError());
+    }
+
+    return Effect.succeed(result.data);
+  });
+
+/** Configuration is read once at the Node process boundary, without credential fallbacks. */
+export const readExecutorConfiguration = () =>
+  Effect.runSync(parseExecutorConfiguration(process.env));

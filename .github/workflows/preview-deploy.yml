@@ -34,6 +34,23 @@ jobs:
           path: preview-artifact
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
+      - name: Fork EMPTY preview database
+        id: database
+        uses: ./.github/actions/provision-preview-database
+        with:
+          output-file: ${{ runner.temp }}/database-handoff/handoff.json
+        env:
+          DOPPLER_DEPLOY_TOKEN: ${{ secrets.DOPPLER_DEPLOY_TOKEN }}
+          DOPPLER_DEPLOY_PROJECT: ${{ vars.DOPPLER_DEPLOY_PROJECT }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_NAME: ${{ vars.CLOUDFLARE_ACCOUNT_NAME }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          NEON_PARENT_BRANCH_ID: ${{ vars.NEON_PARENT_BRANCH_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_ACTIONS: "true"
+          DEPLOYMENT_ENVIRONMENT: cloudflare-preview
+          RUN_ID: ${{ github.event.workflow_run.id }}
       - name: Provision, deploy, and verify
         env:
           DOPPLER_API_TOKEN: ${{ secrets.DOPPLER_API_TOKEN }}
@@ -45,9 +62,9 @@ jobs:
           DOPPLER_DEPLOY_TOKEN: ${{ secrets.DOPPLER_DEPLOY_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_ACTIONS: 'true'
-          PREVIEW_ENVIRONMENT: cloudflare-preview
-          PREVIEW_RUN_ID: ${{ github.event.workflow_run.id }}
+          GITHUB_ACTIONS: "true"
+          DEPLOYMENT_ENVIRONMENT: cloudflare-preview
+          RUN_ID: ${{ github.event.workflow_run.id }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_ACCOUNT_NAME: ${{ vars.CLOUDFLARE_ACCOUNT_NAME }}
           DOPPLER_DEPLOY_PROJECT: ${{ vars.DOPPLER_DEPLOY_PROJECT }}
@@ -57,6 +74,11 @@ jobs:
           -e DOPPLER_FRONTEND_TOKEN -e DOPPLER_FRONTEND_PROJECT
           -e DOPPLER_WORKFLOWS_TOKEN -e DOPPLER_WORKFLOWS_PROJECT
           -e DOPPLER_DEPLOY_TOKEN -e GITHUB_TOKEN -e GITHUB_REPOSITORY -e GITHUB_ACTIONS
-          -e PREVIEW_ENVIRONMENT -e PREVIEW_RUN_ID -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME
+          -e DEPLOYMENT_ENVIRONMENT -e RUN_ID -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME
           -e DOPPLER_DEPLOY_PROJECT
-          tools sh -ec 'npx playwright install --with-deps chromium >/dev/null 2>&1; exec npx tsx scripts/preview-cli.ts deploy'
+          -v "${{ runner.temp }}/database-handoff:/database-output:ro"
+          -e DATABASE_OUTPUT_FILE=/database-output/handoff.json
+          tools sh -ec 'npx playwright install --with-deps chromium >/dev/null 2>&1; exec npx tsx scripts/preview/preview-cli.ts deploy'
+      - name: Remove private database handoff
+        if: always()
+        run: rm -f "${{ runner.temp }}/database-handoff/handoff.json"

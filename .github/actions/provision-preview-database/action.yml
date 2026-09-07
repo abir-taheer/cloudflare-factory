@@ -1,0 +1,43 @@
+name: Provision deployment PostgreSQL
+# Replace this composite implementation to use another PostgreSQL branch provider.
+description: Fork an owned EMPTY Neon baseline and write a private vendor-neutral handoff
+inputs:
+  mode:
+    description: Deployment ownership scope (preview or prod)
+    default: preview
+  output-file:
+    description: Absolute runner-temp path ending in /handoff.json; contains credentials and must never be uploaded
+    required: true
+outputs:
+  handoff-file:
+    description: Private file path only; never the connection URL
+    value: ${{ inputs.output-file }}
+runs:
+  using: composite
+  steps:
+    - name: Provision PostgreSQL branch from trusted controller
+      shell: bash
+      env:
+        DATABASE_ACTION_MODE: ${{ inputs.mode }}
+        DATABASE_ACTION_OUTPUT: ${{ inputs.output-file }}
+      run: |
+        set -euo pipefail
+        case "$DATABASE_ACTION_OUTPUT" in "$RUNNER_TEMP"/*/handoff.json) ;; *) echo 'Database handoff must be in runner temp'; exit 1;; esac
+        directory="$(dirname "$DATABASE_ACTION_OUTPUT")"
+        mkdir -p "$directory"
+        chmod 700 "$directory"
+        test ! -e "$DATABASE_ACTION_OUTPUT"
+        case "$DATABASE_ACTION_MODE" in
+          preview) runner=scripts/preview/database/preview-neon-cli.ts; command=provision ;;
+          prod) runner=scripts/production/production-provision-cli.ts; command= ;;
+          *) echo 'Database action mode invalid'; exit 1 ;;
+        esac
+        docker compose run --rm --no-deps \
+          -v "$directory:/database-output" -e DATABASE_OUTPUT_FILE=/database-output/handoff.json \
+          -e GITHUB_ACTIONS -e DEPLOYMENT_ENVIRONMENT -e GITHUB_EVENT_NAME -e GITHUB_REF \
+          -e GITHUB_REPOSITORY -e GITHUB_TOKEN -e RUN_ID -e PR \
+          -e REPOSITORY -e REPOSITORY_ID -e REVISION -e DEPLOYMENT_APP -e ALLOW_CREATE \
+          -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME \
+          -e DOPPLER_DEPLOY_TOKEN -e DOPPLER_DEPLOY_PROJECT \
+          -e NEON_PROJECT_ID -e NEON_PARENT_BRANCH_ID \
+          tools npx tsx "$runner" ${command:+"$command"}

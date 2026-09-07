@@ -21,7 +21,7 @@ jobs:
           persist-credentials: false
       # No named environment, secrets, management token, or privileged shared cache here.
       - name: Build credential-free Worker modules and assets
-        run: docker compose run --rm --no-deps tools npx tsx scripts/preview-build.ts . /workspace/preview-artifact
+        run: docker compose run --rm --no-deps tools npx tsx scripts/build/preview-build-cli.ts . /workspace/preview-artifact
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: github.event.pull_request.head.repo.full_name == github.repository
         with:

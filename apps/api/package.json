@@ -4,9 +4,15 @@
   "type": "module",
   "version": "0.1.0",
   "dependencies": {
-    "@factory/platform": "*",
+    "@effect/platform-node": "4.0.0-rc.112",
+    "@factory/api-contract": "0.0.0",
+    "@factory/auth": "0.0.0",
+    "@factory/platform": "0.0.0",
+    "@hono/zod-openapi": "1.6.3",
     "effect": "4.0.0-rc.112",
-    "@effect/platform-node": "4.0.0-rc.112"
+    "hono": "4.13.7",
+    "pg": "8.23.0",
+    "zod": "4.5.4"
   },
   "scripts": {
     "dev": "tsx watch src/node-api.ts",
@@ -16,6 +22,6 @@
     "build:node": "esbuild src/node-api.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/node-api.js",
     "test": "tsx --test src/*.test.ts",
     "test:integration": "playwright test --config=../../playwright.config.ts --grep \"all authenticated|invalid note\"",
-    "build:worker": "esbuild src/cloudflare-api.ts --bundle --format=esm --platform=neutral --conditions=workerd,worker,browser --main-fields=module,main --external:cloudflare:* --external:node:* --outfile=dist/cloudflare-api.mjs"
+    "build:worker": "tsx ../../scripts/build/build-worker.ts src/cloudflare-api.ts dist/cloudflare-api.mjs"
   }
 }

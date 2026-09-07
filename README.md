@@ -24,7 +24,10 @@ All apps run in Docker using PostgreSQL, Redis, S3-compatible storage, SMTP capt
 - `apps/workflows`: Cloudflare and Temporal orchestration around the same domain job.
 - `apps/executor`: constrained local command executor, on an internal network without host mounts or Docker socket.
 - `packages/platform`: capability contracts and Cloudflare/portable implementations.
-- `scripts/preview-*`: preview provisioning, deployment, verification and cleanup.
+- `scripts/preview/`: preview lifecycle, Cloudflare adapters, auth verification and database orchestration.
+- `scripts/production/`: production provisioning, deployment and migration checks.
+- `scripts/build/`: credential-free preview/production artifact builders and shared Worker bundling.
+- `scripts/shared/`: deployment config and database contracts/adapters used by both environments.
 
 ## Deployment
 

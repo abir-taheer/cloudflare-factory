@@ -1,52 +1,16 @@
 # Frontend
 
-Static developer console; no build step. Token stays in page memory, is sent only
-as `Authorization: Bearer …`, and is cleared on reload/page exit. Job status is
-refreshed explicitly with **Check status**.
+React, Vite, Router, TanStack Query and MUI. Feature work is paused for the strict lint baseline; only the recovery view is currently registered.
 
-## Entrypoints
+Current browser coverage is unavailable: `tests/blackbox.spec.ts` still targets the removed bearer-auth implementation. Its earlier Docker results do not validate this frontend. After the lint freeze, replace it with real cross-origin signup, Mailpit email verification, signin, note/job completion, and signout/denial tests.
 
-- `@factory/frontend/cloudflare` → `src/cloudflare-frontend.ts` (default Worker export).
-  Bind `API` to the environment's API Worker and `ASSETS` to `apps/frontend/public`.
-  Set the `ENVIRONMENT` scalar to `dev`, `preview`, or `prod`.
-  Set `assets.run_worker_first = true` so every response receives security headers.
-- `@factory/frontend/node` → `src/node-frontend.ts` (`createFrontendServer(apiUrl)` export).
-  Direct execution requires `ENVIRONMENT` (`dev`, `preview`, or `prod`), `PORT`
-  (integer 1–65535; use `5173` in Compose), and `API_URL` as an explicit HTTP(S)
-  origin. It serves `public` relative to the module.
+- Cloudflare entry: `src/cloudflare-frontend.ts`, ASSETS only with `assets.run_worker_first = true`.
+- Node entry: `src/node-frontend.ts`, serves `dist`; typed `ENVIRONMENT` and `PORT` are required.
+- Public `dist/runtime-config.json` contains only `API_URL` and `ENVIRONMENT` (`dev`, `preview`, `prod`). API calls go directly to that origin.
+- Docker HMR uses `src/node-vite.ts` with typed `VITE_API_URL`, `ENVIRONMENT=dev` and `PORT`.
 
-Both runtimes validate scalars with Effect v4 Schema through ConfigProvider.
-Keys stay identical across dev/preview/prod; there are no environment or endpoint
-fallbacks. Node rejects invalid configuration before listening. Cloudflare returns
-a secured 503 before accessing bindings. Configuration errors omit supplied values.
+Run `npm run check --workspace @factory/frontend` and `npm run build --workspace @factory/frontend` through `docker compose run --rm tools`.
 
-## Proposed API responses
+React Doctor scans the full project with every category and applicable optional rule at error severity, empty ignore lists, and inline suppressions disabled. Optional classic-JSX/class-component rules, the blanket component-prop ban (MUI accepts styling props), and checks for absent Ink, Tailwind, styled-components and Three.js integrations remain disabled; TypeScript JSX conventions are enforced by root lint. React Doctor does not replace root Oxlint or the official React compiler lint rules. Score, telemetry and Socket checks are disabled; dependency auditing remains separate. The mandatory `lint:react-doctor` command validates the stock JSON report with Zod and requires a complete single-project scan, equal positive scanned/analyzed counts, no skips and no findings. It uses a failing process timeout, not `--max-duration`. Verification: stock 0.9.13 returned exit 0 with 0/18 files and `complete:false` under a 1 ms budget; the gate rejected that captured report and accepted the complete 18/18 report. `lint:react-hooks` separately runs the official recommended-latest compiler preset with every severity promoted to error.
 
-| Request | JSON response |
-| --- | --- |
-| `GET /healthz` (public) | `{ "status": "ok", "environment": "local" }` |
-| `POST /api/notes` with `{ "content": "…" }` | `{ "id": "…", "content": "…" }` |
-| `GET /api/notes/:id` | `{ "id": "…", "content": "…" }` |
-| `POST /api/jobs` with `{ "noteId": "…" }` | `{ "id": "…", "status": "queued" }` |
-| `GET /api/jobs/:id` | `{ "id": "…", "status": "completed" }` |
-
-IDs contain letters, numbers, underscores or hyphens. The UI displays additional
-JSON fields as text. A successful health HTTP status indicates availability;
-missing environment is displayed as unreported. Proxy requests accept only the
-routes/methods above, reject query strings and redirects, and limit JSON bodies
-to 64 KiB. Upstream requests time out after 15 seconds. No production fallback.
-
-## Verify (Docker only)
-
-```sh
-docker compose run --rm tools npm run check --workspace @factory/frontend
-docker compose run --rm tools npm run test --workspace @factory/frontend
-docker compose run --rm tools npm run check
-```
-
-The HTTP tests run a portable API fixture and frontend on ephemeral loopback ports.
-They do not start Workers or use remote bindings.
-
-`npm run test:browser --workspace @factory/frontend` additionally exercises the UI
-using Playwright Chromium in Docker (requires Chromium and its system dependencies
-in the tools container).
+Hooks audit (7.1.1): 17 recommended-latest rules plus seven applicable optional rules run as errors. Internal `invariant`/`todo`, unused FBT integration, removed `component-hook-factories`, and blanket `memoized-effect-dependencies` are omitted; the latter demands manual memoization beyond React’s dependency correctness checks. React Doctor uses `--no-cache`; its empty inline-audit backup parent is removed with `rmdir`, while any retained backup fails the gate and is preserved for inspection.
