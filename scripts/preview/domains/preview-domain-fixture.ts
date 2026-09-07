@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import type { TestContext } from "node:test";
 import { Effect } from "effect";
 import { z } from "zod";
@@ -22,6 +22,9 @@ const AttachRequestSchema = z.object({
 const httpFailure = 503;
 const accountIdLength = 32;
 const revisionLength = 40;
+const domainIdBytes = 20;
+const hexadecimalRadix = 16;
+const hexadecimalByteWidth = 2;
 type DnsRecord = z.infer<typeof CloudflareDnsRecordSchema>;
 
 const maximumCertificatePageSize = 50;
@@ -70,7 +73,10 @@ function attachDomainResponse(
     throw new Error("Invalid provider attachment body");
   }
 
-  const id = randomUUID();
+  const id = Array.from(randomBytes(domainIdBytes), (byte) =>
+    byte.toString(hexadecimalRadix).padStart(hexadecimalByteWidth, "0"),
+  ).join("");
+
   const certId = randomUUID();
   const domain = { ...parsed.data, id, cert_id: certId, zone_name: credentials.domains.zoneName };
 

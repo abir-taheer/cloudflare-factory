@@ -9,6 +9,9 @@ export const HostnameSchema = z
 
 export const ProviderIdSchema = z.string().regex(/^[a-f0-9-]{32,36}$/u);
 
+/** Worker domain IDs also use 40-character hex identifiers, independently of certificate and zone IDs. */
+export const WorkerDomainIdSchema = ProviderIdSchema.or(z.string().regex(/^[a-f0-9]{40}$/u));
+
 /** Zone and suffix are independently pinned controller inputs, never app runtime inputs. */
 export const CloudflareDomainConfigurationSchema = z
   .object({
@@ -22,7 +25,7 @@ export const CloudflareDomainConfigurationSchema = z
 
 /** Cloudflare's domain identity includes the exact Worker and zone, not just a hostname. */
 export const CloudflareDomainSchema = z.object({
-  id: ProviderIdSchema,
+  id: WorkerDomainIdSchema,
   cert_id: ProviderIdSchema,
   hostname: HostnameSchema,
   service: z.string().min(1),
