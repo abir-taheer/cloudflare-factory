@@ -101,7 +101,7 @@ function sameCertificateId(left: string, right: string): boolean {
   return left.replaceAll("-", "") === right.replaceAll("-", "");
 }
 
-/** Cloudflare may return a leaf or pack ID; resolve that exact ID rather than adopting by hostname. */
+/** Match fresh certificate identity and only exact-host or Cloudflare-generated apex/host/wildcard coverage. */
 export function ownedPreviewCertificate(
   domain: PreviewDomainState,
   packs: CloudflareCertificatePack[],
@@ -133,12 +133,25 @@ export function ownedPreviewCertificate(
     return null;
   }
 
+  const expectedHosts = new Set([
+    domain.configuration.zoneName,
+    domain.hostname,
+    `*.${domain.hostname}`,
+  ]);
+
+  const matchesCoverage = (hosts: string[]) => {
+    const exactHost = hosts.length === 1 && hosts[0] === domain.hostname;
+
+    const generatedHosts =
+      hosts.length === expectedHosts.size &&
+      [...expectedHosts].every((host) => hosts.includes(host));
+
+    return exactHost || generatedHosts;
+  };
+
   const exclusiveHosts =
-    pack.hosts.length === 1 &&
-    pack.hosts[0] === domain.hostname &&
-    pack.certificates.every(
-      (certificate) => certificate.hosts.length === 1 && certificate.hosts[0] === domain.hostname,
-    );
+    matchesCoverage(pack.hosts) &&
+    pack.certificates.every((certificate) => matchesCoverage(certificate.hosts));
 
   const preexisting = domain.previousCertificateIds.some((id) => sameCertificateId(id, pack.id));
 

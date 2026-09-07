@@ -35,13 +35,15 @@ export function validateNeonOwnedBranch(
 ) {
   const branch = previewRecord(result["branch"]);
   const annotation = previewRecord(previewRecord(result["annotation"])["value"]);
+  const branchHasParent = branch["parent_id"] !== null && branch["parent_id"] !== undefined;
 
+  // Schema-only branches are independent roots; the source parent is pinned in the annotation.
   if (
     target.identity.provider !== "neon" ||
     target.identity.projectId !== credentials.projectId ||
     target.identity.parentBranchId !== credentials.parentBranchId ||
     branch["project_id"] !== credentials.projectId ||
-    branch["parent_id"] !== credentials.parentBranchId ||
+    branchHasParent ||
     branch["id"] === credentials.parentBranchId ||
     branch["name"] !== target.name ||
     branch["default"] !== false ||

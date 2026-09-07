@@ -76,6 +76,8 @@ services:
     image: mcr.microsoft.com/playwright:v1.63.0-noble
     profiles: [tools]
     init: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
     working_dir: /workspace
     volumes:
       - .:/workspace:ro

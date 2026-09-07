@@ -25,7 +25,13 @@ async function verifyPreviewIngress(urls: PreviewPublicUrls): Promise<void> {
         signal: AbortSignal.timeout(verificationTimeoutMs),
       });
 
-      ready = health.ok;
+      const frontend = await fetch(urls.frontend, {
+        redirect: "error",
+        signal: AbortSignal.timeout(verificationTimeoutMs),
+      });
+
+      await frontend.body?.cancel();
+      ready = health.ok && frontend.ok;
     } catch {
       /* Bound propagation retries; never log a response. */
     }
@@ -122,11 +128,9 @@ async function verifyPreviewBrowser(
     throw new Error("Preview public runtime configuration failed");
   }
 
-  await page
-    .getByRole("heading", { name: "Write a note. Put it to work." })
-    .waitFor({ timeout: 30_000 });
+  await page.getByRole("heading", { name: "Your workspace" }).waitFor({ timeout: 30_000 });
 
-  await page.locator("#health").filter({ hasText: "API healthy" }).waitFor({ timeout: 30_000 });
+  await page.getByText("API healthy · preview", { exact: true }).waitFor({ timeout: 30_000 });
 
   // No traces, screenshots, console forwarding, or credential-bearing page arguments.
   const browserRead = await page.evaluate(
