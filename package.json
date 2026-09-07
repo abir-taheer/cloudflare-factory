@@ -34,7 +34,7 @@
     "@aws-sdk/client-s3": "3.1127.0",
     "@cloudflare/workers-types": "5.20260907.1",
     "@playwright/test": "1.63.0",
-    "@types/node": "24.13.3",
+    "@types/node": "26.4.1",
     "esbuild": "0.28.2",
     "oxlint": "1.81.0",
     "oxlint-tsgolint": "7.0.2001",
