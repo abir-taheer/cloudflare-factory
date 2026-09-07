@@ -1,35 +1,34 @@
 # Cloudflare Factory
 
-A Node monorepo for isolated Cloudflare previews and portable, Docker-only development. Backend services use Effect v4 (`4.0.0-rc.112`, a release candidate).
+A Node monorepo with isolated PR previews and portable Docker development. The API uses Effect v4, Zod 4.5, PostgreSQL and Drizzle. The React/Vite frontend uses MUI, TanStack Query and a client generated from OpenAPI. Better Auth provides verified-email signup, sessions and password reset.
 
-## Local development
-
-Install Docker Desktop, then:
+## Develop
 
 ```sh
-docker compose run --rm tools npm ci
 docker compose up --build --wait
-docker compose run --rm tools npm run check
-docker compose run --rm browser-tests
+docker compose run --rm --no-deps --build tools npm run check
 ```
 
-Open http://localhost:5174. Use `local-development-only` as the demo token. Create a note, queue a job, and inspect its uppercase output. Mail capture is at http://localhost:8025. Local credentials are disposable, public development fixtures; never use them in deployment.
+Open [the frontend](http://localhost:5174), create an account, and open its verification email in [Mailpit](http://localhost:8025). The API runs separately at `http://localhost:8787`. Development credentials are disposable fixtures; deployment requires explicit configuration.
 
-All apps run in Docker using PostgreSQL, Redis, S3-compatible storage, SMTP capture and Temporal. No Wrangler dev, Miniflare, workerd or remote bindings participate in local development. `docker compose down` retains data; add `--volumes` only to reset disposable local data.
+All local services run in Docker: PostgreSQL, Redis, S3-compatible storage, SMTP and Temporal. No native Cloudflare runtime or remote binding is used locally. `docker compose down` preserves data. See [Docker images and blackbox tests](docs/docker.md) for independent app builds, dependency updates and isolated runtime-image checks.
 
 ## Layout
 
-- `apps/frontend`: static UI and same-origin API proxy, with Worker and Node entrypoints.
-- `apps/api`: authenticated Effect HTTP application.
-- `apps/workflows`: Cloudflare and Temporal orchestration around the same domain job.
-- `apps/executor`: constrained local command executor, on an internal network without host mounts or Docker socket.
-- `packages/platform`: capability contracts and Cloudflare/portable implementations.
-- `scripts/preview-*`: preview provisioning, deployment, verification and cleanup.
+- `apps/api`: typed HTTP routes and authentication.
+- `apps/frontend`: themeable SPA and static delivery; no API proxy.
+- `apps/workflows`: Cloudflare and Temporal hosts for shared domain jobs.
+- `apps/executor`: constrained command execution for trusted local development.
+- `packages/platform`: provider-neutral capabilities, adapters and generated database migrations.
+- `packages/auth`: shared Better Auth configuration and email delivery.
+- `packages/api-contract` and `packages/api-client`: Zod contracts, OpenAPI and generated client types.
+- `packages/lint-rules`: shared code-quality rules and their behavioral tests.
+- `scripts/build`, `scripts/preview`, `scripts/production` and `scripts/shared`: deployment entrypoints and supporting modules grouped by responsibility.
 
-## Deployment
+## Deploy and customize
 
-See [preview environments](docs/preview-environments.md) for Doppler and named GitHub environment setup. Each PR receives empty independent data resources; production credentials/data are never a fallback. Sandbox deployment is opt-in because Cloudflare requires a paid plan. Hyperdrive requires an explicitly configured empty-database provisioner.
+[Preview environments](docs/preview-environments.md) use an empty database branch and new Cloudflare resources for each PR. Database provisioning is a separate composite action, followed by Hyperdrive creation. Production data is never a preview source or fallback.
 
-See [Effect v4 and lint guidance](docs/effect-v4.md) for the pinned APIs and validation policy. Replace capability Layers at the composition root; domain operations do not depend on Worker bindings.
+[Production deployment](docs/production.md) uses named GitHub environments and per-app Doppler projects, with CI credentials in a separate project. Runtime settings retain the same names across dev, preview and prod. Resource names, IDs, credentials and rendered Wrangler configuration stay outside tracked code.
 
-This is a bootstrap with a bearer-token demonstration, not an end-user identity system. Add application authorization before introducing users or sensitive data. Cloudflare and local providers share contracts, not identical consistency or failure semantics.
+Replace provider Layers at the composition root to self-host; domain code does not require Worker bindings. See [provider contracts](docs/providers.md), [Effect and validation guidance](docs/effect-v4.md), and the [frontend guide](apps/frontend/README.md). Cloudflare Sandbox is opt-in and requires an eligible plan; the local executor does not provide isolation between mutually untrusted tenants.

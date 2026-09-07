@@ -1,121 +1,130 @@
 # Preview environments
 
-Infrastructure uses **Effect 4.0.0-rc.112**. All local commands run in Docker; they never use Wrangler dev, Miniflare, or remote bindings. Deploy commands below intentionally mutate Cloudflare; building and testing scripts does not.
+Infrastructure uses **Effect 4.0.0-rc.112** for execution and **Zod 4.5.4** for schema-first boundary validation and inferred types. PostgreSQL is the application database locally and when deployed. Local development, builds and verification run in Docker; Cloudflare runtime verification uses actual deployed Workers. No emulators or remote development bindings are used.
 
 ## Binding contract
 
-| Entrypoint | Bindings |
-| --- | --- |
-| `apps/api/src/cloudflare-api.ts` | `DATABASE` D1, `OBJECTS` R2, `CACHE` KV, `JOBS` Queue producer, cross-Worker `WORKFLOW` and `COORDINATOR`, `WORKFLOWS` service, `API_TOKEN`, `ENVIRONMENT=preview` |
-| `apps/workflows/src/cloudflare-workflows.ts` | Same four data bindings, Queue consumer, `WORKFLOW` class `DemoWorkflow`, `COORDINATOR` class `JobCoordinator` |
-| `apps/frontend/src/cloudflare-frontend.ts` | `API` service, `ASSETS` from `apps/frontend/public`; all requests pass through Worker security headers |
+| Entrypoint                                   | Bindings                                                                                                                                                                                                                                   |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/api/src/cloudflare-api.ts`             | `HYPERDRIVE` PostgreSQL, `OBJECTS` R2, `CACHE` KV, `JOBS` Queue producer, cross-Worker `WORKFLOW` / `COORDINATOR`, `WORKFLOWS` service, `BETTER_AUTH_SECRET`, `ENVIRONMENT`, `API_URL`, `FRONTEND_ORIGINS`, `EMAIL_FROM`, `EMAIL_DELIVERY` |
+| `apps/workflows/src/cloudflare-workflows.ts` | Same data bindings, Queue consumer, `WORKFLOW` class `DemoWorkflow`, `COORDINATOR` class `JobCoordinator`                                                                                                                                  |
+| `apps/frontend/src/cloudflare-frontend.ts`   | `ASSETS` from the Vite build in `apps/frontend/dist`; public `runtime-config.json` contains only `API_URL` and `ENVIRONMENT`                                                                                                               |
 
-Only the frontend has a `workers.dev` address. API, workflow and DO access stays on bindings; version preview URLs are disabled. Each PR gets separate empty D1, KV, R2, Queue, Worker, Workflow and DO resources. `infra/d1.sql` initializes schema; no database cloning, production data, provider secrets or shared application storage is used. Synthetic verification creates a note and job in the PR data plane. Subsequent pushes retain that PR's data until cleanup.
+Every PR receives its own PostgreSQL branch, Hyperdrive, KV, R2, Queue, Workers, Workflow and DO. API and frontend use separate HTTPS Custom Domains beneath the same pinned `DOMAIN_SUFFIX`, so session requests are same-site. All Workers disable `workers.dev` and version preview URLs; workflows remain private. The API accepts credentialed CORS only from the exact preview frontend origin. The frontend serves assets without an API proxy or service binding. Existing PR data persists between pushes until cleanup; verification signs up a synthetic user and writes synthetic notes and jobs.
 
-## One-time configuration
+## Configuration
 
-Use Doppler projects `cloudflare-factory-ci`, `cloudflare-factory-api`, `cloudflare-factory-frontend`, `cloudflare-factory-workflows`, and `cloudflare-factory-executor`, each with dev/preview/prod configs. App directories map to their own development config; omit the CI project from local default scopes. Preview reads app baselines and generates PR bindings without creating Doppler configs or using write tokens.
+Use separate deployment-CI and app Doppler projects, each with **dev/preview/prod** configs. App directories map to their own dev config; the CI project is not a default local scope. App variable names stay the same across environments. No actual project/resource names, account IDs, generated configurations or credentials belong in source control.
 
-Create GitHub environment **cloudflare-preview**, restricted to the protected default branch. Configure independent environment variables:
+GitHub environment **cloudflare-preview** is restricted to the protected default branch. Configure these **environment secrets**, including the private identity pins so Actions masks their values in step logs:
 
-| Variable | Value |
-| --- | --- |
-| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ACCOUNT_NAME` | Exact permitted account ID and live account name |
-| `DOPPLER_DEPLOY_PROJECT` | `cloudflare-factory-ci` |
-| `DOPPLER_API_PROJECT` | `cloudflare-factory-api` |
-| `DOPPLER_FRONTEND_PROJECT` | `cloudflare-factory-frontend` |
-| `DOPPLER_WORKFLOWS_PROJECT` | `cloudflare-factory-workflows` |
+| Secrets                                                                                                  | Purpose                                                                     |
+| -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `DOPPLER_DEPLOY_TOKEN`, `DOPPLER_API_TOKEN`, `DOPPLER_FRONTEND_TOKEN`, `DOPPLER_WORKFLOWS_TOKEN`         | Config-scoped read-only tokens                                              |
+| `DOPPLER_DEPLOY_PROJECT`, `DOPPLER_API_PROJECT`, `DOPPLER_FRONTEND_PROJECT`, `DOPPLER_WORKFLOWS_PROJECT` | Expected project for each token; downloaded config must be `preview`        |
+| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ACCOUNT_NAME`                                                       | Exact allowed account, also verified against Cloudflare                     |
+| `CLOUDFLARE_ZONE_ID`                                                                                     | Independently pinned active zone ID                                         |
+| `NEON_PROJECT_ID`, `NEON_PARENT_BRANCH_ID`                                                               | Dedicated preview project and immutable EMPTY baseline ID; never production |
 
-Environment secrets `DOPPLER_DEPLOY_TOKEN`, `DOPPLER_API_TOKEN`, `DOPPLER_FRONTEND_TOKEN`, and `DOPPLER_WORKFLOWS_TOKEN` are read-only service tokens for those projects' **preview** configs. Cleanup, reconciliation and local access need only the deploy token/project. Do not duplicate tokens at repository scope. GitHub supplies read-only `GITHUB_TOKEN` for provenance checks. Executor credentials are not consumed by the Cloudflare controller.
+Keep only `CLOUDFLARE_ZONE_NAME` and `DOMAIN_SUFFIX` as public environment variables for the zone/suffix pins. These names appear intentionally in preview URLs; masking them would suppress useful URL output. Runtime environment key names are unchanged. Workflows read private pins only from `secrets`, with no fallback to `vars`. Populate the named-environment secrets before running the migrated workflows, then remove the superseded private variables.
 
-All app configs require `ENVIRONMENT=dev|preview|prod` matching their config. API additionally requires `API_TOKEN` in prod (at least 20 non-whitespace characters, never the local development token); preview replaces baseline authentication with its HMAC-derived token. Cloudflare frontend/workflows need only `ENVIRONMENT`; resource bindings are generated. Unknown baseline keys are not forwarded to Workers. Portable frontend keys `API_URL` and `PORT` remain app-owned.
+The CI Doppler config requires:
 
-The CI project's preview config must contain:
+| Keys                                                       | Purpose                                                                                      |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `ACCOUNT_ID`, `ACCOUNT_NAME`, `CLOUDFLARE_API_TOKEN`       | Independent identity match and account-scoped control access                                 |
+| `RESOURCE_PREFIX`                                          | Naming prefix, 1–16 lowercase letters/digits/hyphens, starting with a letter                 |
+| `STATE_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | Pre-created private R2 ownership state and PR bucket cleanup                                 |
+| `ZONE_ID`, `ZONE_NAME`, `DOMAIN_SUFFIX`                    | Exact match to the independent GitHub environment pins; suffix equals or is beneath the zone |
+| `NEON_API_KEY`, `NEON_PROJECT_ID`, `NEON_PARENT_BRANCH_ID` | Project-scoped Neon API access and independent parent/project match                          |
+| `NEON_DATABASE_NAME`, `NEON_ROLE_NAME`                     | Explicit existing database and role in the EMPTY baseline                                    |
 
-| Key | Meaning |
-| --- | --- |
-| `ACCOUNT_ID`, `ACCOUNT_NAME`, `CLOUDFLARE_API_TOKEN` | Identity must match independent GitHub variables; account-scoped preview control-plane access |
-| `PREVIEW_STATE_BUCKET` | Pre-created private R2 control bucket; never bound to an app or deleted by cleanup |
-| `PREVIEW_R2_ACCESS_KEY_ID`, `PREVIEW_R2_SECRET_ACCESS_KEY` | R2 S3 credentials for control state and draining PR buckets |
-| `PREVIEW_WORKERS_SUBDOMAIN` | Account subdomain without `.workers.dev`; checked against Cloudflare |
-| `PREVIEW_AUTH_SEED` | Cryptographically random seed of at least 32 bytes; generate 32 random bytes encoded as 64 hex characters |
+The Cloudflare token requires account read, Workers Scripts, Hyperdrive, KV, R2, Queues, and Workflows management. Domain lifecycle additionally needs Zone Read, DNS Read, and SSL and Certificates Write restricted to the verified zone. Worker Custom Domains manage their DNS automatically; the controller has no DNS-write or certificate-order operation. Control state must have no public access or expiry policy. The controller never creates/deletes the state bucket or upgrades provider plans.
 
-Doppler's downloaded `DOPPLER_PROJECT` and `DOPPLER_CONFIG` must match the independent expected variables. The Cloudflare token needs account read, Workers Scripts, D1, KV, R2 and Queues management permissions. Keep these credentials in a dedicated preview account: account-scoped resource-creation and bucket-cleanup permissions are broad. R2 credentials never enter a Worker. Do not enable public access, lifecycle expiration or external writers on the state bucket.
+App configs require matching `ENVIRONMENT`. The API preview baseline requires `BETTER_AUTH_SECRET` (at least 32 characters) and `EMAIL_FROM`. The controller derives an isolated per-PR session signing key from that app secret and immutable account/repository/PR context; the base secret never reaches a Worker. It overlays `API_URL`, the exact `FRONTEND_ORIGINS`, and `EMAIL_DELIVERY=capture`. Frontend/workflows preview baselines require `ENVIRONMENT`. Production API/frontend baselines also require `API_URL`; production API requires `FRONTEND_ORIGINS`. Unknown baseline keys are not forwarded. Executor tokens are not consumed by this controller.
 
-Bootstrap the state bucket separately using the intended account identity. The CLI will not create it or substitute another bucket. Root dependencies are `effect@4.0.0-rc.112`, `tsx`, `esbuild`, `wrangler`, `@aws-sdk/client-s3`, and `@playwright/test`, pinned by the root lockfile. Ignore `preview-artifact/` in the root gitignore.
+Preview email capture uses the owned private `OBJECTS` bucket: `auth-email/<SHA256(trimmed-lowercase-recipient)>/<randomUUID>.json`, containing `{to,subject,text}`. The controller validates bucket ownership, recipient and verification-link origins before using the message. There is no public inbox route. Capture delivery is forbidden in prod. Cleanup and local verification need only the deploy token plus independent identity settings and GitHub access; database cleanup also needs the Neon settings.
 
-## GitHub lifecycle
+## Preview domains
 
-1. `validation.yml` runs on main pushes and PRs. It starts Docker services, runs strict checks with `PLATFORM_INTEGRATION=1`, `PLATFORM_STORAGE_INTEGRATION=1`, `PLATFORM_WORKFLOW_INTEGRATION=1`, and runs the Compose `browser-tests` service. Preview build reuses that validation.
-2. `preview-build.yml` builds PR modules and assets with no deployment environment or secrets. Fork PRs validate but do not upload a deployment artifact.
-3. `preview-deploy.yml` runs on the default branch after a successful build. It verifies the run's workflow path, repository, internal PR and current head. Only bundled modules, SQL and ordinary assets cross the artifact boundary; no PR configuration, install hooks or build scripts execute in the privileged job. Trusted Wrangler uses generated configuration and `--no-bundle`.
-4. Deployment applies schema, deploys workflows → API → frontend and checks inventory. Authenticated blackbox verification proves note persistence and a completed uppercase job result; Chromium checks the frontend and authenticated same-origin read. No token-bearing traces or screenshots are retained.
-5. A secret-free close-event request triggers trusted cleanup. The six-hour reconciler processes closed, expired and partially deleted manifests. Preview expiry is seven days after deployment; it does not close the PR or count bot comments as activity.
+`ZONE_ID`, `ZONE_NAME` and `DOMAIN_SUFFIX` come only from CI Doppler configuration and must match the independent `cloudflare-preview` GitHub environment pins. Local Docker runs pass those same pins explicitly. The controller verifies the zone is active and belongs to the allowed account before provisioning. No actual domain or identifier is checked in. Select an existing owned zone and reserve a preview suffix; buying a domain is not required. A separate registrable domain from production offers stronger site isolation when one is already available. On a shared zone, keep production cookies host-only and trusted origins exact; never use a parent-domain cookie or wildcard CORS.
 
-Push the controller files to the protected default branch before opening the first smoke PR. A missing or ambiguous `workflow_run` PR association fails closed; use manual cleanup or reconciliation. GitHub can replace pending runs in a concurrency group; reconciliation is the backstop.
+Hostnames are `<owned-api-worker-name>.<DOMAIN_SUFFIX>` and `<owned-frontend-worker-name>.<DOMAIN_SUFFIX>`. Only these exact hosts are attached, after the corresponding Worker ownership and PR head are checked. Existing DNS records or domains are rejected. An interrupted attach is recoverable only from saved creation intent and the exact owned Worker/zone tuple. Later ID, suffix or zone drift stops deployment and cleanup; restore the original configuration before retrying.
 
-## Authorized local Docker access
+[Worker Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/) automatically provision DNS and TLS. This controller does not order paid certificates, enable paid add-ons, modify zone settings or replace unrelated application DNS. Custom Domains are limited to [100 per zone](https://developers.cloudflare.com/workers/platform/limits/#routes-and-domains), shared with existing applications; limit errors fail closed.
 
-Set the four `DOPPLER_*_TOKEN` values securely in the host environment, along with `GH_TOKEN` for read-only repository/PR access, `PREVIEW_REPOSITORY=owner/repository`, and the expected account/project variables above. Do not fake `GITHUB_ACTIONS`. Never paste tokens into commands, terminal recordings, PR comments or logs.
+Cloudflare does not automatically delete the generated certificate when detaching a Custom Domain. Private state records domain, DNS, certificate and certificate-pack IDs plus the pre-creation certificate inventory. Cleanup detaches only the owned domain, verifies its managed DNS is absent, and deletes only its new, exclusively covered, unreferenced Advanced certificate pack. Universal/shared/unknown certificates are retained and block completion. Interrupted cleanup retains state for reconciliation. Never manually delete a zone, wildcard certificate or unrelated DNS to resolve a failed preview.
 
-Build without deployment credentials:
+## Database composite actions
+
+`.github/actions/provision-preview-database` is the provider swap point. It accepts `mode: preview|prod` and `output-file`, an absolute runner-temp path ending in `/handoff.json`. Its `handoff-file` output contains **only the file path**. The Neon implementation lives in `scripts/shared/database/neon-*.ts`; replace that adapter/action implementation for a PostgreSQL provider such as PlanetScale. Core Hyperdrive and cleanup code consume the vendor-neutral contract.
+
+Before creation, persist a random intent nonce with the owner, provider project and immutable parent ID. Neon checks the baseline's inherited databases contain no application tables, explicitly forks with `parent-schema`, creates a minimal compute using the plan's default suspension behavior, and rotates the inherited role password. Provider annotations must match the saved intent and owner. Existing names without matching ownership are rejected; missing known branches or replaced endpoints fail closed. No external provisioner webservice or per-PR Doppler config is needed.
+
+The typed handoff in `scripts/shared/database/database-schema.ts` contains `version`, `owner`, `name`, `identity`, and `directUrl`. Owner includes account/repository IDs, environment and PR (null for prod). Identity includes provider, project, parent branch, intent nonce, branch, endpoint and hostname. The consumer checks every field against private state, requires direct PostgreSQL TLS, and rejects pooled/redirected connections. Identity alone is persisted; credentials never enter manifests or artifacts. Temporary files use mode 0600; Actions masks URL/password and deletes the handoff even on failure.
+
+Trusted Drizzle migrations run before Hyperdrive through `@factory/platform/migrate`. The subprocess receives only `DATABASE_URL` and minimal process settings, with no Cloudflare, Doppler or GitHub credentials. Migrations come from trusted controller code, not PR artifacts. Schema changes must reach the controller before dependent previews.
+
+`.github/actions/cleanup-preview-database` is the corresponding provider cleanup swap point. It processes only deleting manifests whose Cloudflare resources are all confirmed absent. Production uses its separate persistent state and does not run preview cleanup; see [production deployment](production.md).
+
+## CI lifecycle and recovery
+
+1. `validation.yml` validates main and PRs with Docker services, strict checks, all integration flags and browser tests. `preview-build.yml` reuses validation and produces only bundled modules/assets without secrets. Forks do not upload deployable artifacts.
+2. Trusted default-branch `preview-deploy.yml` checks build provenance and the exact current internal PR head, then runs the database composite before Hyperdrive and app deployment. It never executes PR build hooks/configuration with credentials.
+3. Deploy runs workflows → API → frontend, checks inventory, attaches the owned custom domains, then verifies normal signup, denied unverified login, captured email verification, session login, note persistence and a **completed uppercase job payload**, plus Chromium frontend behavior and signout denial. It rechecks the head before each Worker and before marking ready. No credentials, cookies, email links or browser traces/screenshots are logged.
+4. Close-event cleanup detaches custom domains, verifies managed DNS and exclusive certificate removal, then removes compute, confirms DO/container absence, then removes data bindings including Hyperdrive. Only then does the database composite delete the exact owned branch and confirm absence. Failed cleanup retains state and data needed for retry.
+5. Six-hour reconciliation runs both Cloudflare cleanup and the database cleanup composite for closed, expired or partially deleted previews. Expiry is seven days after provisioning; it never closes a PR. Failed deployments retain ownership intent for retries/reconciliation.
+
+Names derive from `RESOURCE_PREFIX`, an account/repository hash, PR and resource kind. Private state uses immutable account/repository IDs. A conditional R2 lock serializes local and CI mutations; CI jobs are bounded to 30 minutes and interrupted locks expire after two hours. Missing state authorizes no deletion. Keep names/IDs stable; do not manually recreate resources under reserved names. Version-2 PostgreSQL manifests without domain intents remain cleanup-compatible; no domain ownership is inferred for them. Older database manifest versions require their original trusted controller for cleanup.
+
+## Authorized local Docker smoke
+
+Host environment: config-scoped Doppler tokens and matching project/account/Neon variables above, `GH_TOKEN`, `REPOSITORY`, and `PR`. Forward values by name; never embed secrets in commands. Do not fake GitHub environment variables.
+
+Build without credentials:
 
 ```sh
-docker compose run --rm --no-deps tools npx tsx scripts/preview-build.ts . /workspace/preview-artifact
+docker compose run --rm --no-deps tools npx tsx scripts/build/preview-build-cli.ts . /workspace/preview-artifact
 ```
 
-Start one authorized tools shell, forwarding values by name rather than embedding credentials in command arguments:
+Start the tools shell:
 
 ```sh
 docker compose run --rm --no-deps \
-  -e DOPPLER_DEPLOY_TOKEN -e DOPPLER_API_TOKEN -e DOPPLER_FRONTEND_TOKEN -e DOPPLER_WORKFLOWS_TOKEN -e GH_TOKEN -e PREVIEW_REPOSITORY \
-  -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME \
+  -e DOPPLER_DEPLOY_TOKEN -e DOPPLER_API_TOKEN -e DOPPLER_FRONTEND_TOKEN -e DOPPLER_WORKFLOWS_TOKEN \
   -e DOPPLER_DEPLOY_PROJECT -e DOPPLER_API_PROJECT -e DOPPLER_FRONTEND_PROJECT -e DOPPLER_WORKFLOWS_PROJECT \
-  tools sh
+  -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME \
+  -e CLOUDFLARE_ZONE_ID -e CLOUDFLARE_ZONE_NAME -e DOMAIN_SUFFIX \
+  -e NEON_PROJECT_ID -e NEON_PARENT_BRANCH_ID -e GH_TOKEN -e REPOSITORY -e PR tools sh
 ```
 
-Inside that Docker shell:
+Inside Docker:
 
 ```sh
+export DATABASE_OUTPUT_FILE="$(mktemp -d /tmp/database-handoff.XXXXXX)/handoff.json"
 npx playwright install --with-deps chromium
-npx tsx scripts/preview-cli.ts deploy --local --pr 123 --artifacts preview-artifact
-npx tsx scripts/preview-cli.ts verify --local --pr 123
-npx tsx scripts/preview-cli.ts destroy --local --pr 123
-npx tsx scripts/preview-cli.ts reconcile --local
+npx tsx scripts/preview/database/preview-neon-cli.ts provision --local
+npx tsx scripts/preview/preview-cli.ts deploy --local --pr "$PR" --artifacts preview-artifact
+npx tsx scripts/preview/preview-cli.ts verify --local --pr "$PR"
+npx tsx scripts/preview/preview-cli.ts destroy --local --pr "$PR"
+npx tsx scripts/preview/database/preview-neon-cli.ts cleanup --local
+rm -f "$DATABASE_OUTPUT_FILE"
 ```
 
-Use the selected PR's source for local builds; local artifacts do not have GitHub's immutable build-run provenance. `verify` derives its token internally. For explicitly authorized interactive browser access, this command **prints the bearer token** and nothing else on stdout:
+Use `npx tsx scripts/preview/preview-cli.ts verify --local --pr "$PR"` for authorized testing: it creates and verifies a normal session internally without printing passwords, cookies or verification links. Open the reported frontend URL to inspect the public UI. There is no bearer-token command or fallback. Rotating the API baseline session secret requires redeployment. To reconcile locally, run `npx tsx scripts/preview/preview-cli.ts reconcile --local` followed by `npx tsx scripts/preview/database/preview-neon-cli.ts cleanup --local`. Local artifacts lack GitHub build-run provenance: build the intended PR checkout first.
 
-```sh
-npx tsx scripts/preview-cli.ts token --local --pr 123
-```
+## Optional Sandbox
 
-Token access requires a ready, unexpired ownership manifest. Tokens are HMAC-SHA256 derived from a domain-separated account/repository-ID/PR tuple. They remain stable across pushes and differ between PRs. The seed never enters Worker configuration, artifacts, manifests or logs. Rotating the seed requires redeploying previews before access commands work again.
-
-## Ownership, cleanup and recovery
-
-Names use `cfp-<account/repository hash>-pr-<number>-<kind>`. Manifests live in the private state bucket under immutable account/repository IDs. Every create has a persisted intent first; a pre-existing name without that intent is rejected. Stored names are regenerated and validated, and live IDs must agree before deletion. Do not manually recreate resources under reserved names.
-
-A conditional R2 lock excludes concurrent CI and local mutations. CI jobs are bounded to 30 minutes; an interrupted lock expires after two hours. Never run a local lifecycle process for more than two hours. Missing state authorizes **no deletion**; do not reconstruct ownership from name prefixes alone.
-
-Cleanup disables frontend ingress, removes frontend/API, workflow definition and workflow Worker, verifies DO removal, then drains Queue/R2/KV/D1 resources. R2 cleanup also aborts multipart uploads and checks individual deletion failures. Data is retained while compute deletion is incomplete. Failed cleanup keeps its manifest and is retryable; deleted manifests remain as tombstones. Resource absence, not a green request response, determines completion.
-
-## Optional extensions
-
-Both flags default off. Hyperdrive requires a verified empty-database provisioner; Sandbox requires explicit paid consent and an immutable image. Missing prerequisites fail before provisioning. These paths require separate live sign-off; the default preview tests do not establish optional-provider readiness.
-
-- Hyperdrive requires `PREVIEW_HYPERDRIVE=true`, `PREVIEW_DATABASE_PROVISIONER_URL` and `PREVIEW_DATABASE_PROVISIONER_TOKEN`. The HTTPS provisioner protocol is `GET/PUT/DELETE <base>/<deterministic-name>`; absence is 404. PUT must idempotently create an independent empty database, never clone or attach an existing database. It receives `schemaVersion:"notes-v1"` and must apply the trusted notes schema (`id`, `text`, `created_at`) before reporting ready. GET and PUT responses must include exact `name`, identical `id`, `owner`, `independent:true`, `source:"empty"`, `schemaVersion:"notes-v1"`, and PostgreSQL `origin` fields. GET repeats ownership and origin; DELETE revokes credentials and removes the database. Runtime migrations are not run. Both data Workers receive `HYPERDRIVE`, selecting the request-scoped PostgreSQL adapter; D1 remains independently provisioned.
-- Sandbox requires `PREVIEW_SANDBOX=true`, `PREVIEW_ALLOW_PAID_SANDBOX=true`, and `PREVIEW_SANDBOX_IMAGE` pinned to an immutable Cloudflare registry digest. It plans one container maximum and a separate DO, bound to the workflows entrypoint's `Sandbox` export. No Dockerfile from a PR is built with credentials. The default note job does not exercise sandbox execution; validate it separately before enabling it for users.
+Sandbox alone is opt-in: `SANDBOX_ENABLED=true`, `ALLOW_PAID_SANDBOX=true`, and `SANDBOX_IMAGE` pinned to a trusted immutable Cloudflare registry digest. It adds one container and a separate DO owned by the workflows Worker. Missing prerequisites fail closed. The note job does not verify sandbox execution; validate that separately before enabling it.
 
 ## Official references
 
+- [Neon create branch and immutable parent selection](https://api-docs.neon.tech/reference/createprojectbranch)
+- [Neon API schema and schema-only branching modes](https://neon.com/api_spec/release/v2.json)
+- [Neon direct connection URI](https://api-docs.neon.tech/reference/getconnectionuri)
+- [Neon delete branch and operation completion](https://api-docs.neon.tech/reference/deleteprojectbranch)
 - [Cloudflare binding configuration](https://developers.cloudflare.com/workers/wrangler/configuration/)
-- [D1 create API](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/create/)
-- [Worker deletion and associated DO removal](https://developers.cloudflare.com/api/resources/workers/subresources/scripts/methods/delete/)
-- [R2 bucket emptying and deletion](https://developers.cloudflare.com/r2/buckets/delete-buckets/)
-- [Durable Object namespace inventory](https://developers.cloudflare.com/api/resources/durable_objects/subresources/namespaces/methods/list/)
 - [GitHub privileged workflow security](https://docs.github.com/en/actions/reference/security/secure-use)
-- [Doppler scoped service tokens](https://docs.doppler.com/docs/service-tokens)
-- [Effect v4 source and APIs](https://github.com/Effect-TS/effect-smol/tree/main/packages/effect)
+- [Doppler config-scoped service tokens](https://docs.doppler.com/docs/service-tokens)
 
-Local test success is not a live deployment result. Initial live sign-off must cover deploy, authenticated behavior and cleanup on the same smoke PR.
+Static checks and local service tests do not establish live provider readiness. Sign off only after branch → Hyperdrive → apps → authenticated browser verification → complete cleanup succeeds on the same smoke PR.

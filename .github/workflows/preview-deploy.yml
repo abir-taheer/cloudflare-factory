@@ -22,41 +22,69 @@ jobs:
     environment: cloudflare-preview
     steps:
       # workflow_run uses the default branch. Never check out the PR here.
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
       - name: Build trusted deployment tooling
         run: docker compose build tools
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: preview-bundle
           path: preview-artifact
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
+      - name: Fork EMPTY preview database
+        id: database
+        uses: ./.github/actions/provision-preview-database
+        with:
+          output-file: ${{ runner.temp }}/database-handoff/handoff.json
+        env:
+          DOPPLER_DEPLOY_TOKEN: ${{ secrets.DOPPLER_DEPLOY_TOKEN }}
+          DOPPLER_DEPLOY_PROJECT: ${{ secrets.DOPPLER_DEPLOY_PROJECT }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_NAME: ${{ secrets.CLOUDFLARE_ACCOUNT_NAME }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_ZONE_NAME: ${{ vars.CLOUDFLARE_ZONE_NAME }}
+          DOMAIN_SUFFIX: ${{ vars.DOMAIN_SUFFIX }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          NEON_PARENT_BRANCH_ID: ${{ secrets.NEON_PARENT_BRANCH_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_ACTIONS: "true"
+          DEPLOYMENT_ENVIRONMENT: cloudflare-preview
+          RUN_ID: ${{ github.event.workflow_run.id }}
       - name: Provision, deploy, and verify
         env:
           DOPPLER_API_TOKEN: ${{ secrets.DOPPLER_API_TOKEN }}
-          DOPPLER_API_PROJECT: ${{ vars.DOPPLER_API_PROJECT }}
+          DOPPLER_API_PROJECT: ${{ secrets.DOPPLER_API_PROJECT }}
           DOPPLER_FRONTEND_TOKEN: ${{ secrets.DOPPLER_FRONTEND_TOKEN }}
-          DOPPLER_FRONTEND_PROJECT: ${{ vars.DOPPLER_FRONTEND_PROJECT }}
+          DOPPLER_FRONTEND_PROJECT: ${{ secrets.DOPPLER_FRONTEND_PROJECT }}
           DOPPLER_WORKFLOWS_TOKEN: ${{ secrets.DOPPLER_WORKFLOWS_TOKEN }}
-          DOPPLER_WORKFLOWS_PROJECT: ${{ vars.DOPPLER_WORKFLOWS_PROJECT }}
+          DOPPLER_WORKFLOWS_PROJECT: ${{ secrets.DOPPLER_WORKFLOWS_PROJECT }}
           DOPPLER_DEPLOY_TOKEN: ${{ secrets.DOPPLER_DEPLOY_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_ACTIONS: 'true'
-          PREVIEW_ENVIRONMENT: cloudflare-preview
-          PREVIEW_RUN_ID: ${{ github.event.workflow_run.id }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_ACCOUNT_NAME: ${{ vars.CLOUDFLARE_ACCOUNT_NAME }}
-          DOPPLER_DEPLOY_PROJECT: ${{ vars.DOPPLER_DEPLOY_PROJECT }}
+          GITHUB_ACTIONS: "true"
+          DEPLOYMENT_ENVIRONMENT: cloudflare-preview
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_NAME: ${{ secrets.CLOUDFLARE_ACCOUNT_NAME }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_ZONE_NAME: ${{ vars.CLOUDFLARE_ZONE_NAME }}
+          DOMAIN_SUFFIX: ${{ vars.DOMAIN_SUFFIX }}
+          DOPPLER_DEPLOY_PROJECT: ${{ secrets.DOPPLER_DEPLOY_PROJECT }}
         run: >-
           docker compose run --rm --no-deps
           -e DOPPLER_API_TOKEN -e DOPPLER_API_PROJECT
           -e DOPPLER_FRONTEND_TOKEN -e DOPPLER_FRONTEND_PROJECT
           -e DOPPLER_WORKFLOWS_TOKEN -e DOPPLER_WORKFLOWS_PROJECT
           -e DOPPLER_DEPLOY_TOKEN -e GITHUB_TOKEN -e GITHUB_REPOSITORY -e GITHUB_ACTIONS
-          -e PREVIEW_ENVIRONMENT -e PREVIEW_RUN_ID -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME
+          -e DEPLOYMENT_ENVIRONMENT -e RUN_ID -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME -e CLOUDFLARE_ZONE_ID -e CLOUDFLARE_ZONE_NAME -e DOMAIN_SUFFIX
           -e DOPPLER_DEPLOY_PROJECT
-          tools sh -ec 'npx playwright install --with-deps chromium >/dev/null 2>&1; exec npx tsx scripts/preview-cli.ts deploy'
+          -v "${{ runner.temp }}/database-handoff:/database-output:ro"
+          -e DATABASE_OUTPUT_FILE=/database-output/handoff.json
+          tools sh -ec 'npx playwright install --with-deps chromium >/dev/null 2>&1; exec npx tsx scripts/preview/preview-cli.ts deploy'
+      - name: Remove private database handoff
+        if: always()
+        run: rm -f "${{ runner.temp }}/database-handoff/handoff.json"

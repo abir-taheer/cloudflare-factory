@@ -2,16 +2,18 @@
 
 Domain programs depend on Effect services. Composition roots supply Layers; replacing a provider does not require changing the note/job program.
 
-| Capability | Cloudflare | Portable implementation | Contract limit |
-| --- | --- | --- | --- |
-| Database | D1 | PostgreSQL | Parameterized note persistence; SQL dialects are adapter-specific |
-| Objects | R2 binding | S3-compatible API | Binary put/get/delete; missing objects return null |
-| Cache | KV binding | Redis | Optional TTL; KV is eventually consistent |
-| Queue | Queues binding | Redis Streams | At-least-once delivery; acknowledge only accepted jobs, reclaim pending messages |
-| Workflows | Workflows | Temporal | Deterministic orchestration; replay-safe Effect activities |
-| Coordination | SQLite Durable Objects | Redis leases | Expiring ownership tokens; leases are not fencing locks |
-| Email | Cloudflare email binding | SMTP | Provider acceptance, not delivery; previews do not send external email by default |
-| Sandbox | Sandbox SDK handle | Isolated HTTP executor | Bounded output and timeout; explicit opt-in |
+| Capability   | Cloudflare                                  | Portable implementation                     | Contract limit                                                                                               |
+| ------------ | ------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Database     | Hyperdrive → PostgreSQL                     | PostgreSQL                                  | Shared Drizzle schema and generated migrations; deployment provisions an isolated database before Hyperdrive |
+| Objects      | R2 binding                                  | S3-compatible API                           | Binary put/get/delete; missing objects return null                                                           |
+| Cache        | KV binding                                  | Redis                                       | Optional TTL; KV is eventually consistent                                                                    |
+| Queue        | Queues binding                              | Redis Streams                               | At-least-once delivery; acknowledge only accepted jobs, reclaim pending messages                             |
+| Workflows    | Workflows                                   | Temporal                                    | Deterministic orchestration; replay-safe Effect activities                                                   |
+| Coordination | SQLite Durable Objects                      | Redis leases                                | Expiring ownership tokens; leases are not fencing locks                                                      |
+| Email        | Cloudflare email binding                    | SMTP                                        | Provider acceptance, not delivery; previews do not send external email by default                            |
+| Sandbox      | SDK execution and managed lifecycle adapter | Trusted Docker HTTP executor (execute-only) | Managed lifecycle and file APIs are separate; explicit opt-in                                                |
+
+The provider-neutral managed sandbox interface supports future E2B, Daytona or Modal adapters; none is implemented. See the [managed sandbox contracts and limits](../packages/platform/README.md#managed-sandbox).
 
 Local services have Compose-scoped volumes. Infrastructure ports are internal, with only frontend, API and Mailpit bound to loopback. Change the Compose project name and host ports when running multiple independent local checkouts.
 

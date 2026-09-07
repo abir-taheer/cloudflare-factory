@@ -26,7 +26,7 @@ jobs:
     timeout-minutes: 30
     environment: cloudflare-preview
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
@@ -36,16 +36,36 @@ jobs:
           DOPPLER_DEPLOY_TOKEN: ${{ secrets.DOPPLER_DEPLOY_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_ACTIONS: 'true'
-          PREVIEW_ENVIRONMENT: cloudflare-preview
-          PREVIEW_RUN_ID: ${{ github.event.workflow_run.id }}
-          PREVIEW_PR: ${{ inputs.pr }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_ACCOUNT_NAME: ${{ vars.CLOUDFLARE_ACCOUNT_NAME }}
-          DOPPLER_DEPLOY_PROJECT: ${{ vars.DOPPLER_DEPLOY_PROJECT }}
+          GITHUB_ACTIONS: "true"
+          DEPLOYMENT_ENVIRONMENT: cloudflare-preview
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          PULL_REQUEST_NUMBER: ${{ inputs.pr }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_NAME: ${{ secrets.CLOUDFLARE_ACCOUNT_NAME }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_ZONE_NAME: ${{ vars.CLOUDFLARE_ZONE_NAME }}
+          DOMAIN_SUFFIX: ${{ vars.DOMAIN_SUFFIX }}
+          DOPPLER_DEPLOY_PROJECT: ${{ secrets.DOPPLER_DEPLOY_PROJECT }}
         run: >-
           docker compose run --rm --no-deps
           -e DOPPLER_DEPLOY_TOKEN -e GITHUB_TOKEN -e GITHUB_REPOSITORY -e GITHUB_ACTIONS
-          -e PREVIEW_ENVIRONMENT -e PREVIEW_RUN_ID -e PREVIEW_PR -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME
+          -e DEPLOYMENT_ENVIRONMENT -e RUN_ID -e PULL_REQUEST_NUMBER -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME -e CLOUDFLARE_ZONE_ID -e CLOUDFLARE_ZONE_NAME -e DOMAIN_SUFFIX
           -e DOPPLER_DEPLOY_PROJECT
-          tools sh -ec 'if [ -n "$PREVIEW_RUN_ID" ]; then exec npx tsx scripts/preview-cli.ts destroy; else exec npx tsx scripts/preview-cli.ts destroy --pr "$PREVIEW_PR"; fi'
+          tools sh -ec 'if [ -n "$RUN_ID" ]; then exec npx tsx scripts/preview/preview-cli.ts destroy; else exec npx tsx scripts/preview/preview-cli.ts destroy --pr "$PULL_REQUEST_NUMBER"; fi'
+      - name: Cleanup PostgreSQL branches after Cloudflare resources
+        if: always()
+        uses: ./.github/actions/cleanup-preview-database
+        env:
+          DOPPLER_DEPLOY_TOKEN: ${{ secrets.DOPPLER_DEPLOY_TOKEN }}
+          DOPPLER_DEPLOY_PROJECT: ${{ secrets.DOPPLER_DEPLOY_PROJECT }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_NAME: ${{ secrets.CLOUDFLARE_ACCOUNT_NAME }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_ZONE_NAME: ${{ vars.CLOUDFLARE_ZONE_NAME }}
+          DOMAIN_SUFFIX: ${{ vars.DOMAIN_SUFFIX }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          NEON_PARENT_BRANCH_ID: ${{ secrets.NEON_PARENT_BRANCH_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_ACTIONS: "true"
+          DEPLOYMENT_ENVIRONMENT: cloudflare-preview

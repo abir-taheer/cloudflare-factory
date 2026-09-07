@@ -8,12 +8,31 @@
     "./node": "./src/node-frontend.ts"
   },
   "scripts": {
-    "start": "tsx src/node-frontend.ts",
-    "check": "tsc --noEmit -p tsconfig.json",
-    "test": "tsx --test src/*.test.ts",
-    "test:browser": "tsx tests/frontend-browser.ts"
+    "dev": "tsx src/node-vite.ts",
+    "build": "tsx src/node-build.ts",
+    "start": "node dist/node-frontend.mjs",
+    "build:node": "tsx ../../scripts/build/build-node-cli.ts frontend",
+    "check": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "effect": "4.0.0-rc.112"
+    "@emotion/cache": "11.14.0",
+    "@emotion/react": "11.14.0",
+    "@emotion/styled": "11.14.1",
+    "@factory/api-client": "0.0.0",
+    "@factory/api-contract": "0.0.0",
+    "@mui/material": "9.4.0",
+    "@tanstack/react-query": "5.102.8",
+    "better-auth": "1.7.3",
+    "effect": "4.0.0-rc.112",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "react-router-dom": "7.18.3",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.4",
+    "vite": "7.3.6"
   }
 }

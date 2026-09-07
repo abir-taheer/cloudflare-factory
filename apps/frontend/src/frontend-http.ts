@@ -1,100 +1,122 @@
 import { Effect } from "effect";
-import { catch as catchFrontendFailure } from "effect/Effect";
+import { PublicFrontendSchema } from "./lib/runtime-schema.js";
 
-/** Frontend request bodies are capped at 64 KiB, including streamed uploads. */
-export const frontendBodyLimit = 64 * 1024;
-
-/** Frontend adapters supply fixed API and static asset destinations. */
+/** Static adapters expose assets only; no API transport or secret bindings. */
 export interface FrontendServices {
-  fetchApi: (request: Request) => Promise<Response>;
-  fetchAsset: (request: Request) => Promise<Response>;
+  readonly fetchAsset: (request: Request) => Promise<Response>;
 }
 
-/** Apply frontend security headers to successes and errors in both runtimes. */
-export function secureFrontendResponse(response: Response): Response {
+/** Production connections are restricted to the public API origin from the validated artifact. */
+export function secureFrontendResponse(
+  response: Response,
+  apiOrigin = "",
+  immutable = false,
+  nonce = "",
+): Response {
   const headers = new Headers(response.headers);
-  headers.set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
+
+  let nonceSource = "";
+
+  if (nonce.length > 0) {
+    nonceSource = ` 'nonce-${nonce}'`;
+  }
+
+  // Emotion style tags require a nonce; MUI dynamic positioning needs style attributes.
+  headers.set(
+    "Content-Security-Policy",
+    `default-src 'none'; script-src 'self'; style-src 'self'; style-src-elem 'self'${nonceSource}; style-src-attr 'unsafe-inline'; connect-src 'self' ${apiOrigin}; img-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`,
+  );
+
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("Referrer-Policy", "no-referrer");
-  headers.set("Cache-Control", "no-store");
+  headers.set("Cache-Control", immutable ? "public, max-age=31536000, immutable" : "no-cache");
   return new Response(response.body, { status: response.status, headers });
 }
 
-/** Read a frontend upload without buffering beyond the request body limit. */
-export async function readFrontendBody(request: Request): Promise<ArrayBuffer | null> {
-  if (Number(request.headers.get("content-length")) > frontendBodyLimit) return null;
-  const reader = request.body?.getReader();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  if (reader) {
-    try {
-      for (;;) {
-        const chunk = await reader.read();
-        if (chunk.done) break;
-        const bytes: unknown = chunk.value;
-        if (!(bytes instanceof Uint8Array)) throw new Error("Frontend request stream must contain bytes");
-        size += bytes.byteLength;
-        if (size > frontendBodyLimit) {
-          await reader.cancel();
-          return null;
-        }
-        chunks.push(bytes);
-      }
-    } finally {
-      reader.releaseLock();
-    }
-  }
-  const body = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.length; }
-  return body.buffer;
-}
-
-async function routeFrontendRequest(request: Request, services: FrontendServices): Promise<Response> {
+async function serveFrontendAssets(request: Request, services: FrontendServices) {
   const url = new URL(request.url);
-  const path = url.pathname;
-  const apiRoute = path === "/healthz" || /^\/api\/(?:notes|jobs)(?:\/[A-Za-z0-9_-]+)?$/u.test(path);
-  if (apiRoute) {
-    const createRoute = path === "/api/notes" || path === "/api/jobs";
-    const allowedMethod = createRoute ? "POST" : "GET";
-    if (request.method !== allowedMethod) return new Response("Method not allowed", { status: 405, headers: { Allow: allowedMethod } });
-    if (url.search) return new Response("Query parameters are not supported", { status: 400 });
-    const headers = new Headers({ Accept: "application/json" });
-    if (path !== "/healthz") {
-      const authorization = request.headers.get("authorization");
-      if (authorization === null || !/^Bearer \S+$/iu.test(authorization)) return new Response("Bearer token required", { status: 401 });
-      headers.set("Authorization", authorization);
-    }
-    let body: ArrayBuffer | undefined = undefined;
-    if (createRoute) {
-      if (request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() !== "application/json") return new Response("JSON body required", { status: 415 });
-      const boundedBody = await readFrontendBody(request);
-      if (boundedBody === null) return new Response("Request body too large", { status: 413 });
-      body = boundedBody;
-      headers.set("Content-Type", "application/json");
-    }
-    const upstream = await services.fetchApi(new Request(`http://frontend-api${path}`, {
-      method: request.method, headers, ...(body === undefined ? {} : { body }),
-      redirect: "manual", signal: AbortSignal.timeout(15_000)
-    }));
-    // Never allow a redirect to send the browser or its token to another origin.
-    if (upstream.status >= 300 && upstream.status < 400) {
-      await upstream.body?.cancel();
-      return new Response("API redirect refused", { status: 502 });
-    }
-    const responseHeaders = new Headers();
-    responseHeaders.set("Content-Type", upstream.headers.get("content-type") ?? "application/json");
-    return new Response(upstream.body, { status: upstream.status, headers: responseHeaders });
+
+  const isApiRoute =
+    url.pathname.startsWith("/api") ||
+    ["/healthz", "/readyz", "/openapi.json"].includes(url.pathname);
+
+  if (isApiRoute) {
+    return secureFrontendResponse(new Response("Not found", { status: 404 }));
   }
-  if (!["/", "/index.html", "/app.js", "/style.css"].includes(path)) return new Response("Not found", { status: 404 });
-  if (request.method !== "GET" && request.method !== "HEAD") return new Response("Method not allowed", { status: 405, headers: { Allow: "GET, HEAD" } });
-  return services.fetchAsset(request);
+
+  const isReadMethod = ["GET", "HEAD"].includes(request.method);
+
+  if (!isReadMethod) {
+    return secureFrontendResponse(
+      new Response("Method not allowed", { status: 405, headers: { Allow: "GET, HEAD" } }),
+    );
+  }
+
+  const isAsset = /^\/assets\/[A-Za-z0-9_-]+\.(?:js|css|woff2|svg)$/u.test(url.pathname);
+
+  const isPage = [
+    "/",
+    "/index.html",
+    "/login",
+    "/signup",
+    "/verify-email",
+    "/forgot-password",
+    "/reset-password",
+    "/workspace",
+  ].includes(url.pathname);
+
+  if (!isAsset && !isPage && url.pathname !== "/runtime-config.json") {
+    return secureFrontendResponse(new Response("Not found", { status: 404 }));
+  }
+
+  const configResponse = await services.fetchAsset(
+    new Request(new URL("/runtime-config.json", url)),
+  );
+
+  if (!configResponse.ok) {
+    throw new Error("Frontend public configuration missing");
+  }
+
+  const value: unknown = await configResponse.json();
+  const config = PublicFrontendSchema.parse(value);
+
+  if (url.pathname === "/runtime-config.json") {
+    return secureFrontendResponse(Response.json(config), config.API_URL);
+  }
+
+  const response = await services.fetchAsset(
+    new Request(new URL(isPage ? "/index.html" : url.pathname, url), { method: request.method }),
+  );
+
+  if (isPage && response.ok && request.method === "GET") {
+    const nonceByteLength = 16;
+
+    const nonce = btoa(
+      String.fromCodePoint(...crypto.getRandomValues(new Uint8Array(nonceByteLength))),
+    );
+
+    const template = await response.text();
+    const html = template.replaceAll("__FRONTEND_NONCE__", nonce);
+
+    return secureFrontendResponse(
+      new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } }),
+      config.API_URL,
+      false,
+      nonce,
+    );
+  }
+
+  return secureFrontendResponse(response, config.API_URL, isAsset && response.ok);
 }
 
-/** Resolve frontend requests through an Effect v4 boundary with sanitized failures. */
-export function handleFrontendRequest(request: Request, services: FrontendServices): Promise<Response> {
-  return Effect.runPromise(Effect.tryPromise(() => routeFrontendRequest(request, services)).pipe(
-    catchFrontendFailure(() => Effect.succeed(new Response("Frontend upstream unavailable", { status: 502 }))),
-    Effect.map(secureFrontendResponse)
-  ));
+/** Static delivery sanitizes configuration and I/O failures at an Effect boundary. */
+export function handleFrontendRequest(
+  request: Request,
+  services: FrontendServices,
+): Effect.Effect<Response> {
+  return Effect.tryPromise(() => serveFrontendAssets(request, services)).pipe(
+    Effect.orElseSucceed(() =>
+      secureFrontendResponse(new Response("Frontend service not configured", { status: 503 })),
+    ),
+  );
 }

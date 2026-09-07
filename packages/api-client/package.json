@@ -1,0 +1,29 @@
+{
+  "name": "@factory/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./http": "./src/http.ts"
+  },
+  "scripts": {
+    "generate": "tsx scripts/node-generate.ts",
+    "check:generated": "tsx --test scripts/public-openapi.test.ts && tsx scripts/node-generate.ts --check",
+    "check": "tsc --noEmit -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "5.102.8"
+  },
+  "dependencies": {
+    "@factory/api-contract": "0.0.0",
+    "openapi-fetch": "0.17.0",
+    "openapi-react-query": "0.5.4",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3"
+  }
+}

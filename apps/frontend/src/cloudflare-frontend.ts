@@ -1,23 +1,18 @@
-import { ConfigProvider, Effect } from "effect";
-import { handleFrontendRequest, secureFrontendResponse } from "./frontend-http.js";
-import { parseFrontendScalars } from "./frontend-configuration.js";
+import { Effect } from "effect";
+import { handleFrontendRequest } from "./frontend-http.js";
 
-/** Cloudflare frontend requires independent API service and static assets bindings. */
+/** Frontend Worker requires static assets only, with no API service or backend secrets. */
 export interface CloudflareFrontendBindings {
-  readonly ENVIRONMENT: unknown;
-  API: { fetch(request: Request): Promise<Response> };
-  ASSETS: { fetch(request: Request): Promise<Response> };
+  readonly ASSETS: { fetch(request: Request): Promise<Response> };
 }
 
-/** Cloudflare frontend entrypoint; configure assets.run_worker_first for security headers. */
+/** Set assets.run_worker_first for security headers on all static responses. */
 export default {
   fetch(request: Request, env: CloudflareFrontendBindings): Promise<Response> {
-    return Effect.runPromise(parseFrontendScalars(ConfigProvider.fromUnknown(env)).pipe(
-      Effect.flatMap(() => Effect.tryPromise(() => handleFrontendRequest(request, {
-        fetchApi: (apiRequest) => env.API.fetch(apiRequest),
-        fetchAsset: (assetRequest) => env.ASSETS.fetch(assetRequest)
-      }))),
-      Effect.orElseSucceed(() => secureFrontendResponse(new Response("Frontend service not configured", { status: 503 })))
-    ));
-  }
+    return Effect.runPromise(
+      handleFrontendRequest(request, {
+        fetchAsset: (assetRequest) => env.ASSETS.fetch(assetRequest),
+      }),
+    );
+  },
 };

@@ -7,26 +7,44 @@
     ".": "./src/index.ts",
     "./cloudflare": "./src/adapters/cloudflare.ts",
     "./portable": "./src/adapters/portable.ts",
-    "./demo": "./src/note-demo.ts"
+    "./demo": "./src/note-demo.ts",
+    "./migrate": "./src/adapters/migrate-postgres.ts",
+    "./postgres": "./src/adapters/postgres-database.ts",
+    "./auth-schema": "./src/adapters/schema/auth-schema.ts",
+    "./capture-email": "./src/adapters/capture-email.ts",
+    "./configuration": "./src/configuration/index.ts",
+    "./managed-sandbox": "./src/sandbox/managed-sandbox.ts",
+    "./managed-sandbox/layer": "./src/sandbox/managed-sandbox-layer.ts",
+    "./cloudflare-managed-sandbox": "./src/adapters/cloudflare-managed-sandbox.ts"
   },
   "scripts": {
     "check": "tsc --noEmit",
-    "test": "tsx --test src/*.test.ts"
+    "test": "tsx --test src/*.test.ts",
+    "db:generate": "drizzle-kit generate --dialect=postgresql --schema=./src/adapters/schema/*.ts --out=./migrations/drizzle --name=auth-notes",
+    "auth:generate": "auth generate --config ./auth-schema.config.ts --output ./src/adapters/schema/auth-schema.ts --yes",
+    "db:migrate": "tsx src/adapters/migrate-postgres.ts"
   },
   "dependencies": {
-    "effect": "4.0.0-rc.112",
     "@aws-sdk/client-s3": "3.1127.0",
+    "@cloudflare/sandbox": "0.12.9",
     "@temporalio/client": "1.23.0",
+    "drizzle-orm": "1.0.0-rc.4",
+    "effect": "4.0.0-rc.112",
     "nodemailer": "10.0.0",
     "pg": "8.23.0",
-    "redis": "6.2.1"
+    "redis": "6.2.1",
+    "zod": "4.5.4"
   },
   "devDependencies": {
+    "@better-auth/drizzle-adapter": "1.7.3",
     "@cloudflare/workers-types": "5.20260907.1",
     "@types/node": "24.13.3",
-    "@types/nodemailer": "7.0.12",
+    "@types/nodemailer": "8.0.1",
     "@types/pg": "8.23.1",
+    "auth": "1.7.3",
+    "better-auth": "1.7.3",
+    "drizzle-kit": "1.0.0-rc.4",
     "tsx": "4.23.13",
-    "typescript": "7.0.2"
+    "typescript": "6.0.3"
   }
 }

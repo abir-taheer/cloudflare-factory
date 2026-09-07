@@ -1,4 +1,5 @@
 node_modules/
+.idea/
 dist/
 .wrangler/
 .env
@@ -11,3 +12,10 @@ test-results/
 *.tsbuildinfo
 
 preview-artifact/
+production-artifact/
+
+# Machine-specific configuration and rendered provider bindings
+doppler.yaml
+wrangler.json
+wrangler.jsonc
+wrangler.toml

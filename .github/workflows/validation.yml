@@ -11,19 +11,95 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+          fetch-depth: 0
+      - name: Scan Git history and tracked working content for secrets
+        shell: bash
+        env:
+          # Official Gitleaks v8.30.1, pinned to its published image digest.
+          GITLEAKS_IMAGE: ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+        run: |
+          set -euo pipefail
+          scan_dir="$(mktemp -d)"
+          trap 'rm -rf "$scan_dir"' EXIT
+          # Copy current tracked file contents, not HEAD blobs or ignored local settings.
+          git ls-files -z --cached |
+            while IFS= read -r -d '' path; do
+              if [[ -f "$path" && ! -L "$path" ]]; then printf '%s\0' "$path"; fi
+            done |
+            tar --null -T - -cf - | tar -xf - -C "$scan_dir"
+          scan_status=0
+          docker run --rm --network none --workdir /repo -v "$PWD:/repo:ro" \
+            "$GITLEAKS_IMAGE" git /repo --log-opts=--all \
+            --config /repo/gitleaks-history.toml --redact=100 --no-banner \
+            --ignore-gitleaks-allow --gitleaks-ignore-path /tmp/no-ignores || scan_status=1
+          docker run --rm --network none -v "$scan_dir:/content:ro" \
+            -v "$PWD/.gitleaks.toml:/config/gitleaks.toml:ro" \
+            "$GITLEAKS_IMAGE" dir /content --config /config/gitleaks.toml \
+            --redact=100 --no-banner --ignore-gitleaks-allow \
+            --gitleaks-ignore-path /tmp/no-ignores || scan_status=1
+          exit "$scan_status"
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - name: Build Docker verification tooling
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          target: development
+          load: true
+          tags: factory-development:local
+          cache-from: type=gha,scope=tools-linux-amd64
+          cache-to: type=gha,mode=max,scope=tools-linux-amd64
+      - name: Lint first (strict rules, plugin tests, pinned manifests)
+        run: docker compose run --rm --no-deps tools npm run lint
+      - name: Build API runtime image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          target: api
+          load: true
+          tags: factory-api:local
+          cache-from: type=gha,scope=api-linux-amd64
+          cache-to: type=gha,mode=max,scope=api-linux-amd64
+      - name: Build frontend runtime image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          target: frontend
+          load: true
+          tags: factory-frontend:local
+          cache-from: type=gha,scope=frontend-linux-amd64
+          cache-to: type=gha,mode=max,scope=frontend-linux-amd64
+      - name: Build workflows runtime image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          target: workflows
+          load: true
+          tags: factory-workflows:local
+          cache-from: type=gha,scope=workflows-linux-amd64
+          cache-to: type=gha,mode=max,scope=workflows-linux-amd64
+      - name: Build executor runtime image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          target: executor
+          load: true
+          tags: factory-executor:local
+          cache-from: type=gha,scope=executor-linux-amd64
+          cache-to: type=gha,mode=max,scope=executor-linux-amd64
       - name: Start portable infrastructure and apps
-        run: docker compose up --build --wait --wait-timeout 240
-      - name: Strict checks and all real-service integration tests
+        run: docker compose -f compose.yaml -f compose.test.yaml up --wait --wait-timeout 240
+      - name: Unit and all real-service integration tests
         run: >-
           docker compose run --rm --no-deps
           -e PLATFORM_INTEGRATION=1 -e PLATFORM_STORAGE_INTEGRATION=1 -e PLATFORM_WORKFLOW_INTEGRATION=1
-          tools npm run check
+          -e PLATFORM_EXECUTOR_INTEGRATION=1 -e EXECUTOR_URL=http://executor:8090/execute -e EXECUTOR_TOKEN=local-executor-development-only
+          tools npm run test:unit
       - name: Browser blackbox tests
-        run: docker compose run --rm browser-tests
+        run: docker compose -f compose.yaml -f compose.test.yaml run --rm browser-tests
       - name: Stop isolated CI infrastructure
         if: always()
-        run: docker compose down --volumes --remove-orphans
+        run: docker compose -f compose.yaml -f compose.test.yaml down --volumes --remove-orphans

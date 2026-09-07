@@ -1,0 +1,15 @@
+name: Cleanup preview PostgreSQL
+description: Delete only manifest-owned Neon branches after Cloudflare cleanup; retry all pending database deletions
+runs:
+  using: composite
+  steps:
+    - name: Remove owned PostgreSQL branches
+      shell: bash
+      run: |
+        set -euo pipefail
+        docker compose run --rm --no-deps \
+          -e GITHUB_ACTIONS -e DEPLOYMENT_ENVIRONMENT -e GITHUB_REPOSITORY -e GITHUB_TOKEN \
+          -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME -e CLOUDFLARE_ZONE_ID -e CLOUDFLARE_ZONE_NAME -e DOMAIN_SUFFIX \
+          -e DOPPLER_DEPLOY_TOKEN -e DOPPLER_DEPLOY_PROJECT \
+          -e NEON_PROJECT_ID -e NEON_PARENT_BRANCH_ID \
+          tools npx tsx scripts/preview/database/preview-neon-cli.ts cleanup

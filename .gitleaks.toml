@@ -1,0 +1,38 @@
+title = "Public repository secret and deployment configuration checks"
+
+# Private Doppler settings and rendered Wrangler bindings stay untracked.
+# Supply resource IDs and names through environment-backed deployment generation.
+# CI scans credentials and resource identifiers throughout history. This full policy
+# also rejects machine-local Doppler selections in current tracked files.
+# Default secret rules apply everywhere. Identifier rules apply only to deployment config,
+# never arbitrary UUIDs, dependency hashes, image digests or GitHub Action commit pins.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "deployment-cloudflare-account-id"
+description = "Cloudflare account IDs must come from private deployment settings"
+path = '''(?i)(?:^|/)(?:wrangler(?:[.-][^/]*)?\.(?:jsonc?|toml)|(?:infra|deploy|deployment|config|\.github/workflows)/.*\.(?:jsonc?|toml|ya?ml))$'''
+regex = '''(?i)(?:^|[\s,{])["']?(?:account_id|cloudflare_account_id|expected_cloudflare_account_id)["']?\s*[:=]\s*["']?([a-f0-9]{32})(?:["'\s,}]|$)'''
+secretGroup = 1
+
+[[rules]]
+id = "wrangler-resource-id"
+description = "Wrangler resource IDs must be generated from private environment settings"
+path = '''(?i)(?:^|/)wrangler(?:[.-][^/]*)?\.(?:jsonc?|toml)$'''
+regex = '''(?i)(?:^|[\s,{])["']?(?:id|database_id|namespace_id|preview_id|preview_database_id)["']?\s*[:=]\s*["']([a-f0-9]{32}|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})["']'''
+secretGroup = 1
+
+[[rules]]
+id = "wrangler-resource-name"
+description = "Rendered Wrangler resource names must not be published"
+path = '''(?i)(?:^|/)wrangler(?:[.-][^/]*)?\.(?:jsonc?|toml)$'''
+regex = '''(?i)(?:^|[\s,{])["']?(?:name|database_name|bucket_name|preview_bucket_name|service|queue|script_name)["']?\s*[:=]\s*["']([a-z0-9][a-z0-9_.-]*)["']'''
+secretGroup = 1
+
+[[rules]]
+id = "doppler-private-settings"
+description = "Machine-specific Doppler project and config selections must stay untracked"
+path = '''(?i)(?:^|/)doppler\.ya?ml$'''
+regex = '''(?im)^\s*(?:project|config)\s*:\s*["']?([a-z0-9][a-z0-9_.-]*)'''
+secretGroup = 1

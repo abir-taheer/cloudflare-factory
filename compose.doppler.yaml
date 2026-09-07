@@ -1,0 +1,13 @@
+services:
+  api:
+    environment: !reset null
+    env_file: ${DOPPLER_DEV_DIRECTORY:?Run npm run dev:doppler}/api.env
+  frontend:
+    environment: !reset null
+    env_file: ${DOPPLER_DEV_DIRECTORY:?Run npm run dev:doppler}/frontend.env
+  workflows:
+    environment: !reset null
+    env_file: ${DOPPLER_DEV_DIRECTORY:?Run npm run dev:doppler}/workflows.env
+  executor:
+    environment: !reset null
+    env_file: ${DOPPLER_DEV_DIRECTORY:?Run npm run dev:doppler}/executor.env

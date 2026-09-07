@@ -1,6 +1,7 @@
 name: cloudflare-factory
 x-app: &app
-  build: .
+  build: { context: ., target: development }
+  image: factory-development:local
   init: true
   security_opt: [no-new-privileges:true]
   cap_drop: [ALL]
@@ -9,6 +10,16 @@ x-app: &app
     - ./packages:/workspace/packages:ro
     - ./tests:/workspace/tests:ro
     - ./scripts:/workspace/scripts:ro
+    - dependencies:/workspace/node_modules
+    - api-dependencies:/workspace/apps/api/node_modules
+    - frontend-dependencies:/workspace/apps/frontend/node_modules
+    - workflows-dependencies:/workspace/apps/workflows/node_modules
+    - executor-dependencies:/workspace/apps/executor/node_modules
+    - api-client-dependencies:/workspace/packages/api-client/node_modules
+    - api-contract-dependencies:/workspace/packages/api-contract/node_modules
+    - auth-dependencies:/workspace/packages/auth/node_modules
+    - platform-dependencies:/workspace/packages/platform/node_modules
+    - lint-dependencies:/workspace/packages/lint-rules/node_modules
   environment: &environment
     ENVIRONMENT: dev
     TEMPORAL_NAMESPACE: default
@@ -21,30 +32,74 @@ x-app: &app
     S3_SECRET_ACCESS_KEY: local-development-only
     S3_BUCKET: factory
     SMTP_HOST: mailpit
-    SMTP_PORT: '1025'
+    SMTP_PORT: "1025"
     TEMPORAL_ADDRESS: temporal:7233
-    API_TOKEN: local-development-only
   depends_on:
-    postgres: {condition: service_healthy}
-    redis: {condition: service_healthy}
-    minio-setup: {condition: service_completed_successfully}
-    temporal: {condition: service_healthy}
+    postgres: { condition: service_healthy }
+    database-migrate: { condition: service_completed_successfully }
+    redis: { condition: service_healthy }
+    minio-setup: { condition: service_completed_successfully }
+    temporal: { condition: service_healthy }
 services:
+  database-migrate:
+    build: { context: ., target: development }
+    image: factory-development:local
+    init: true
+    command: [npm, run, db:migrate, --workspace, "@factory/platform"]
+    volumes:
+      - ./packages:/workspace/packages:ro
+      - dependencies:/workspace/node_modules
+      - platform-dependencies:/workspace/packages/platform/node_modules
+      - auth-dependencies:/workspace/packages/auth/node_modules
+    environment:
+      DATABASE_URL: postgres://factory:local-development-only@postgres:5432/factory
+    depends_on:
+      postgres: { condition: service_healthy }
+  browser-dependencies:
+    build: { context: ., target: development }
+    image: factory-development:local
+    profiles: [tools]
+    # Docker seeds an empty dependency volume from this lockfile-built image before starting.
+    command: [node, --version]
+    volumes:
+      - dependencies:/workspace/node_modules
+      - api-dependencies:/workspace/apps/api/node_modules
+      - frontend-dependencies:/workspace/apps/frontend/node_modules
+      - workflows-dependencies:/workspace/apps/workflows/node_modules
+      - executor-dependencies:/workspace/apps/executor/node_modules
+      - api-client-dependencies:/workspace/packages/api-client/node_modules
+      - api-contract-dependencies:/workspace/packages/api-contract/node_modules
+      - auth-dependencies:/workspace/packages/auth/node_modules
+      - platform-dependencies:/workspace/packages/platform/node_modules
+      - lint-dependencies:/workspace/packages/lint-rules/node_modules
   browser-tests:
     image: mcr.microsoft.com/playwright:v1.63.0-noble
     profiles: [tools]
     init: true
     working_dir: /workspace
-    volumes: [".:/workspace:ro", "dependencies:/workspace/node_modules:ro"]
+    volumes:
+      - .:/workspace:ro
+      - dependencies:/workspace/node_modules:ro
+      - api-dependencies:/workspace/apps/api/node_modules:ro
+      - frontend-dependencies:/workspace/apps/frontend/node_modules:ro
+      - workflows-dependencies:/workspace/apps/workflows/node_modules:ro
+      - executor-dependencies:/workspace/apps/executor/node_modules:ro
+      - api-client-dependencies:/workspace/packages/api-client/node_modules:ro
+      - api-contract-dependencies:/workspace/packages/api-contract/node_modules:ro
+      - auth-dependencies:/workspace/packages/auth/node_modules:ro
+      - platform-dependencies:/workspace/packages/platform/node_modules:ro
+      - lint-dependencies:/workspace/packages/lint-rules/node_modules:ro
     environment:
       BASE_URL: http://frontend:5173
-      TEST_API_TOKEN: local-development-only
     command: [npx, playwright, test]
-    depends_on: [frontend, workflows]
+    depends_on:
+      browser-dependencies: { condition: service_completed_successfully }
+      frontend: { condition: service_started }
+      workflows: { condition: service_started }
   executor:
-    build: .
+    build: { context: ., target: executor }
+    image: factory-executor:local
     init: true
-    command: [node, --import, tsx, apps/executor/src/node-executor.ts]
     user: "65534:65534"
     read_only: true
     cap_drop: [ALL]
@@ -65,23 +120,31 @@ services:
     volumes: [temporal-data:/data]
   api:
     <<: *app
+    environment:
+      <<: *environment
+      API_URL: http://localhost:8787
+      FRONTEND_ORIGINS: http://localhost:${FRONTEND_PORT:-5174},http://frontend:5173
+      BETTER_AUTH_SECRET: local-authentication-development-secret-only
+      EMAIL_FROM: development@example.test
+      EMAIL_DELIVERY: smtp
     command: [npx, tsx, watch, apps/api/src/node-api.ts]
-    ports: ['127.0.0.1:8787:8787']
+    ports: ["127.0.0.1:8787:8787"]
     healthcheck:
-      test: [CMD, node, -e, "fetch('http://localhost:8787/healthz').then(r=>process.exit(r.ok?0:1))"]
+      test:
+        [CMD, node, -e, "fetch('http://localhost:8787/healthz').then(r=>process.exit(r.ok?0:1))"]
       interval: 3s
       timeout: 3s
       retries: 30
   frontend:
     <<: *app
-    command: [npx, tsx, watch, apps/frontend/src/node-frontend.ts]
-    ports: ['127.0.0.1:${FRONTEND_PORT:-5174}:5173']
+    command: [npm, run, dev, --workspace, "@factory/frontend"]
+    ports: ["127.0.0.1:${FRONTEND_PORT:-5174}:5173"]
     environment:
       ENVIRONMENT: dev
-      API_URL: http://api:8787
-      PORT: '5173'
+      VITE_API_URL: http://localhost:8787
+      PORT: "5173"
     depends_on:
-      api: {condition: service_healthy}
+      api: { condition: service_healthy }
   workflows:
     <<: *app
     command: [npx, tsx, apps/workflows/src/node-workflows.ts]
@@ -90,7 +153,18 @@ services:
     networks: [default, sandbox]
     profiles: [tools]
     user: root
-    volumes: ['.:/workspace', 'dependencies:/workspace/node_modules']
+    volumes:
+      - .:/workspace
+      - dependencies:/workspace/node_modules
+      - api-dependencies:/workspace/apps/api/node_modules
+      - frontend-dependencies:/workspace/apps/frontend/node_modules
+      - workflows-dependencies:/workspace/apps/workflows/node_modules
+      - executor-dependencies:/workspace/apps/executor/node_modules
+      - api-client-dependencies:/workspace/packages/api-client/node_modules
+      - api-contract-dependencies:/workspace/packages/api-contract/node_modules
+      - auth-dependencies:/workspace/packages/auth/node_modules
+      - platform-dependencies:/workspace/packages/platform/node_modules
+      - lint-dependencies:/workspace/packages/lint-rules/node_modules
     depends_on: {}
     command: [npm, run, check]
   postgres:
@@ -99,7 +173,7 @@ services:
       POSTGRES_USER: factory
       POSTGRES_PASSWORD: local-development-only
       POSTGRES_DB: factory
-    volumes: ['postgres-data:/var/lib/postgresql/data', './infra/postgres.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro']
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
     healthcheck:
       test: [CMD-SHELL, pg_isready -U factory]
       interval: 2s
@@ -107,8 +181,8 @@ services:
       retries: 30
   redis:
     image: redis:8.2.1-bookworm
-    command: [redis-server, --appendonly, 'yes']
-    volumes: ['redis-data:/data']
+    command: [redis-server, --appendonly, "yes"]
+    volumes: ["redis-data:/data"]
     healthcheck:
       test: [CMD, redis-cli, ping]
       interval: 2s
@@ -120,28 +194,40 @@ services:
     environment:
       MINIO_ROOT_USER: local-development
       MINIO_ROOT_PASSWORD: local-development-only
-    volumes: ['object-data:/data']
+    volumes: ["object-data:/data"]
   minio-setup:
     image: minio/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on: [minio]
     entrypoint: [/bin/sh, -ec]
-    command: ['until mc alias set local http://minio:9000 local-development local-development-only; do sleep 1; done; mc mb --ignore-existing local/factory']
+    command:
+      [
+        "until mc alias set local http://minio:9000 local-development local-development-only; do sleep 1; done; mc mb --ignore-existing local/factory",
+      ]
   mailpit:
     image: axllent/mailpit:v1.27.8
-    ports: ['127.0.0.1:8025:8025']
+    ports: ["127.0.0.1:8025:8025"]
   temporal:
     image: temporalio/temporal:1.4.1
     depends_on:
-      temporal-init: {condition: service_completed_successfully}
+      temporal-init: { condition: service_completed_successfully }
     healthcheck:
       test: [CMD, temporal, operator, cluster, health, --address, localhost:7233]
       interval: 3s
       timeout: 3s
       retries: 40
     command: server start-dev --ip 0.0.0.0 --db-filename /data/temporal.db
-    volumes: ['temporal-data:/data']
+    volumes: ["temporal-data:/data"]
 volumes:
   dependencies:
+  api-dependencies:
+  frontend-dependencies:
+  workflows-dependencies:
+  executor-dependencies:
+  api-client-dependencies:
+  api-contract-dependencies:
+  auth-dependencies:
+  platform-dependencies:
+  lint-dependencies:
   postgres-data:
   redis-data:
   object-data:
