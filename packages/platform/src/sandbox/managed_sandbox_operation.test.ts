@@ -2,43 +2,44 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { access, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
-import { Cause, Effect, Exit } from "effect";
+import { Effect, Exit } from "effect";
 import { managedSandboxOperation } from "./managed_sandbox_operation.js";
 import { ManagedSandbox } from "./managed_sandbox.js";
 import { managedSandboxLayer } from "./managed_sandbox_layer.js";
 
-test(
-  "interrupted Effect scope executes real file cleanup and reports the cleanup deadline",
-  { timeout: 5000 },
-  async () => {
-    const directory = await mkdtemp("/tmp/platform-scope-");
-    const file = `${directory}/owned`;
+test("interrupted Effect scope executes real file cleanup", { timeout: 5000 }, async () => {
+  const directory = await mkdtemp("/tmp/platform-scope-");
+  const file = `${directory}/owned`;
 
-    try {
-      await writeFile(file, "owned");
+  try {
+    await writeFile(file, "owned");
 
-      const cleanup = managedSandboxOperation("destroy", 30, async (signal) => {
-        await rm(file);
-        await delay(1000, undefined, { signal });
-      });
+    const cleanup = managedSandboxOperation("destroy", 5000, () => rm(file));
 
-      const program = Effect.scoped(
-        Effect.gen(function* () {
-          yield* Effect.acquireRelease(Effect.succeed(file), () => cleanup.pipe(Effect.orDie));
-          return yield* Effect.interrupt;
-        }),
-      );
+    const program = Effect.scoped(
+      Effect.gen(function* () {
+        yield* Effect.acquireRelease(Effect.succeed(file), () => cleanup.pipe(Effect.orDie));
+        return yield* Effect.interrupt;
+      }),
+    );
 
-      const exit = await Effect.runPromise(Effect.exit(program));
+    const exit = await Effect.runPromise(Effect.exit(program));
 
-      assert.ok(Exit.isFailure(exit));
-      assert.ok(Cause.hasDies(exit.cause));
-      await assert.rejects(access(file), { code: "ENOENT" });
-    } finally {
-      await rm(directory, { recursive: true, force: true });
-    }
-  },
-);
+    assert.ok(Exit.isFailure(exit));
+    await assert.rejects(access(file), { code: "ENOENT" });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("stalled sandbox provider reports its deadline", { timeout: 5000 }, async () => {
+  const cleanup = managedSandboxOperation("destroy", 30, (signal) =>
+    delay(60_000, undefined, { signal }),
+  );
+
+  const failure = await Effect.runPromise(Effect.flip(cleanup));
+  assert.equal(failure.category, "deadline");
+});
 
 test(
   "explicit destroy closes the retained session and scope release does not repeat file cleanup",
