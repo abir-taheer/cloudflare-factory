@@ -3,6 +3,7 @@ import {
   CloudflareDomainConfigurationSchema,
   HostnameSchema,
   ProviderIdSchema,
+  WorkerDomainIdSchema,
 } from "../../shared/domains/cloudflare-domain-model.ts";
 
 /** Only identities returned by the provider after a saved intent authorize subsequent deletion. */
@@ -13,7 +14,7 @@ export const PreviewDomainStateSchema = z
     hostname: HostnameSchema,
     service: z.string().regex(/^[a-z0-9-]+$/u),
     phase: z.enum(["planned", "creating", "ready", "detached", "deleted"]),
-    domainId: ProviderIdSchema.nullable(),
+    domainId: WorkerDomainIdSchema.nullable(),
     certificateId: ProviderIdSchema.nullable(),
     certificatePackId: ProviderIdSchema.nullable(),
     previousCertificateIds: z.array(ProviderIdSchema),

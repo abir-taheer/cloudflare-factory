@@ -28,7 +28,11 @@ export const buildPreviewArtifacts = (source: string, output: string) =>
 
       await executeBuildCommand("npm", ["run", "build", "--workspace", "@factory/frontend"], {
         cwd: sourceRoot,
-        env: { PATH: pathSetting?.value ?? "/usr/local/bin:/usr/bin:/bin", NODE_ENV: "production" },
+        env: {
+          PATH: pathSetting?.value ?? "/usr/local/bin:/usr/bin:/bin",
+          HOME: "/tmp",
+          NODE_ENV: "production",
+        },
         timeout: 120_000,
         maxBuffer: 1_048_576,
       });

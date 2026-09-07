@@ -51,7 +51,6 @@ function databaseFixture() {
   const details = {
     branch: {
       id: "br-owned",
-      parent_id: identity.parentBranchId,
       project_id: identity.projectId,
       name: target.name,
       default: false,
@@ -143,6 +142,24 @@ test("matching names with foreign nonce, parent, owner or branch ID are never ad
     );
 
     assert.equal(fixture.isLive(), true);
+  }
+});
+
+test("schema-only roots require the original source annotation and reject attached data branches", () => {
+  const fixture = databaseFixture();
+
+  for (const details of [
+    {
+      ...fixture.details,
+      annotation: { value: { ...fixture.details.annotation.value, parent: "br-foreign" } },
+    },
+    {
+      ...fixture.details,
+      branch: { ...fixture.details.branch, parent_id: credentials.parentBranchId },
+    },
+    { ...fixture.details, branch: { ...fixture.details.branch, init_source: "parent-data" } },
+  ]) {
+    assert.throws(() => validateNeonOwnedBranch(details, fixture.target, credentials));
   }
 });
 

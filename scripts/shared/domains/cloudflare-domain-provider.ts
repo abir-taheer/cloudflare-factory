@@ -177,6 +177,12 @@ export function createCloudflareDomainProvider(input: DomainCredentials) {
         CloudflareDnsRecordSchema,
         true,
       ),
+    listDnsDescendants: (hostname: string) =>
+      list(
+        `${zonePath}/dns_records?name.endswith=${encodeURIComponent(`.${hostname}`)}`,
+        CloudflareDnsRecordSchema,
+        true,
+      ),
     listCertificates: () =>
       list(`${zonePath}/ssl/certificate_packs?status=all`, CloudflareCertificatePackSchema, true),
     attach,
