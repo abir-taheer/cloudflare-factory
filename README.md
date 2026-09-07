@@ -4,6 +4,8 @@ A Node monorepo with isolated PR previews and portable Docker development. The A
 
 ## Develop
 
+Agents: start with [AGENTS.md](AGENTS.md) and the [agent workflow](docs/agent-workflow.md) for the change → Docker checks → PR preview → verification loop.
+
 ```sh
 docker compose up --build --wait
 docker compose run --rm --no-deps --build tools npm run check

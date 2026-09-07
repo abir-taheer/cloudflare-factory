@@ -1,5 +1,6 @@
 # Working agreements
 
+- Follow the [agent workflow](docs/agent-workflow.md) for implementation, PR previews and verification evidence; read the nearest app/package `AGENTS.md` before editing.
 - Before writing code, read [How coding agents read your code](https://modem.dev/blog/how-coding-agents-read-your-code). Use searchable domain names and one spelling per concept.
 - Use kebab-case for authored files and folders; preserve tool-required names. Keep modules focused, remove abandoned paths, and check the surrounding folder structure when adding or moving code.
 - Run development, dependency installation and verification in Docker (`docker compose run --rm tools …`). Never use Wrangler dev, Miniflare or remote bindings locally.
