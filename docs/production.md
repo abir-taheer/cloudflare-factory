@@ -51,7 +51,7 @@ The action outputs only a private file path. The version-1 file contains `owner`
 
 The controller checks committed Drizzle migration SQL against an additive allowlist, then executes the trusted PostgreSQL migration entrypoint in a subprocess receiving only `DATABASE_URL` and `PATH`. Tables, indexes and added columns are allowed; destructive or executable statements fail. Application startup does not run migrations. Review schema changes for compatibility with the previous app version; the deployment is not a cross-service transaction and does not undo schema/data changes on failure.
 
-Hyperdrive receives only the validated direct PostgreSQL origin, with caching disabled and verified TLS. Existing TLS, cache and connection-limit settings must still match; drift fails closed. Its newly created ID is stored privately. An uncertain create that was not checkpointed requires operator reconciliation of the exact owned resource into private state; the controller will not adopt an existing name blindly.
+Hyperdrive receives only the validated direct PostgreSQL origin, with caching disabled and verified TLS. Its `require` mode validates public server certificates through Cloudflare's WebPKI trust store; this differs from PostgreSQL clients' `require` semantics. Custom-CA modes need a separately uploaded CA and an explicit policy change. Production and preview readback must retain the same TLS, cache and connection-limit settings; drift fails closed. Its newly created ID is stored privately. An uncertain create that was not checkpointed requires operator reconciliation of the exact owned resource into private state; the controller will not adopt an existing name blindly.
 
 ## Release and verification
 

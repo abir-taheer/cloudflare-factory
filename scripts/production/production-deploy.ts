@@ -35,6 +35,7 @@ export const deployProductionApplication = () =>
       };
 
       yield* validateProductionArtifacts("production-artifact", revision);
+      process.stdout.write("Production context and artifact provenance verified.\n");
 
       const resources = parseProductionInventory(
         JSON.parse(previewString(config["RESOURCE_INVENTORY_JSON"])),
@@ -64,6 +65,8 @@ export const deployProductionApplication = () =>
           ownerMarker,
           dispatch.ALLOW_CREATE === "true",
         );
+
+        process.stdout.write(`Production ${app} configuration and ownership verified.\n`);
       }
 
       let dependencies = productionApps("all").filter((app) => !selected.includes(app));
@@ -88,6 +91,7 @@ export const deployProductionApplication = () =>
 
       for (const { app, runtime } of prepared) {
         yield* verifyProductionRevision(dispatch);
+        process.stdout.write(`Deploying production ${app}.\n`);
 
         const rendered = renderProductionWorkerConfig(
           {
@@ -116,6 +120,7 @@ export const deployProductionApplication = () =>
       for (const app of selected) {
         if (app !== "workflows") {
           yield* verifyProductionRevision(dispatch);
+          process.stdout.write(`Attaching production ${app} domain.\n`);
           yield* deployProductionDomain(context, app);
         }
       }

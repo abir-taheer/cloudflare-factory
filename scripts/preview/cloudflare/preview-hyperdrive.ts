@@ -6,6 +6,10 @@ import type { PreviewManifest } from "../preview-model.ts";
 import type { PreviewCloudflare } from "./preview-cloudflare.ts";
 import type { PreviewStateStore } from "../lifecycle/preview-state.ts";
 import { readDatabaseHandoff } from "../../shared/database/database-contract.ts";
+import {
+  hyperdriveConnectionPolicy,
+  verifyHyperdriveConnectionPolicy,
+} from "../../shared/database/hyperdrive-policy.ts";
 
 const migrationOutputLimitBytes = 1_048_576;
 
@@ -73,6 +77,22 @@ export const provisionPreviewHyperdrive = (
     };
 
     const hyperdrive = previewResource(manifest, "hyperdrive");
+
+    const verifyReadback = (live: Record<string, unknown>, id: string) => {
+      if (live["id"] !== id || live["name"] !== hyperdrive.name) {
+        throw new PreviewFailure({ operation: "Preview Hyperdrive readback identity mismatch" });
+      }
+
+      const liveOrigin = previewRecord(live["origin"]);
+      verifyHyperdriveConnectionPolicy(live);
+
+      for (const key of ["scheme", "host", "port", "database", "user"] as const) {
+        if (liveOrigin[key] !== origin[key]) {
+          throw new PreviewFailure({ operation: "Preview Hyperdrive origin drift" });
+        }
+      }
+    };
+
     const existing = yield* cf.lookupResource(hyperdrive);
 
     if (
@@ -89,15 +109,7 @@ export const provisionPreviewHyperdrive = (
         yield* cf.request(`/hyperdrive/configs/${encodeURIComponent(existing)}`),
       );
 
-      const liveOrigin = previewRecord(live["origin"]);
-
-      for (const key of ["scheme", "host", "port", "database", "user"] as const) {
-        if (liveOrigin[key] !== origin[key]) {
-          return yield* Effect.fail(
-            new PreviewFailure({ operation: "Preview Hyperdrive origin drift" }),
-          );
-        }
-      }
+      verifyReadback(live, existing);
     }
 
     yield* migratePreviewDatabase(handoff.directUrl);
@@ -110,13 +122,12 @@ export const provisionPreviewHyperdrive = (
         yield* cf.request("/hyperdrive/configs", "POST", {
           name: hyperdrive.name,
           origin,
-          caching: { disabled: true },
-          mtls: { sslmode: "verify-full" },
-          origin_connection_limit: 5,
+          ...hyperdriveConnectionPolicy,
         }),
       );
 
       hyperdrive.id = previewString(result["id"]);
+      yield* state.save(manifest);
     } else {
       hyperdrive.id = existing;
     }
@@ -126,6 +137,10 @@ export const provisionPreviewHyperdrive = (
         new PreviewFailure({ operation: "Preview Hyperdrive readback failed" }),
       );
     }
+
+    const readback = previewRecord(yield* cf.request(`/hyperdrive/configs/${hyperdrive.id}`));
+
+    verifyReadback(readback, previewString(hyperdrive.id));
 
     hyperdrive.phase = "ready";
     yield* state.save(manifest);
