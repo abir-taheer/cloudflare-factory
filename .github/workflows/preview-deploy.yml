@@ -76,6 +76,7 @@ jobs:
           DOPPLER_DEPLOY_PROJECT: ${{ secrets.DOPPLER_DEPLOY_PROJECT }}
         run: >-
           docker compose run --rm --no-deps
+          --user "$(id -u):$(id -g)" -e HOME=/tmp
           -e DOPPLER_API_TOKEN -e DOPPLER_API_PROJECT
           -e DOPPLER_FRONTEND_TOKEN -e DOPPLER_FRONTEND_PROJECT
           -e DOPPLER_WORKFLOWS_TOKEN -e DOPPLER_WORKFLOWS_PROJECT
@@ -84,7 +85,7 @@ jobs:
           -e DOPPLER_DEPLOY_PROJECT
           -v "${{ runner.temp }}/database-handoff:/database-output:ro"
           -e DATABASE_OUTPUT_FILE=/database-output/handoff.json
-          tools sh -ec 'npx playwright install --with-deps chromium >/dev/null 2>&1; exec npx tsx scripts/preview/preview-cli.ts deploy'
+          browser-tests npx tsx scripts/preview/preview-cli.ts deploy
       - name: Remove private database handoff
         if: always()
         run: rm -f "${{ runner.temp }}/database-handoff/handoff.json"

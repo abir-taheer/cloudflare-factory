@@ -46,12 +46,19 @@ jobs:
           CLOUDFLARE_ZONE_NAME: ${{ vars.CLOUDFLARE_ZONE_NAME }}
           DOMAIN_SUFFIX: ${{ vars.DOMAIN_SUFFIX }}
           DOPPLER_DEPLOY_PROJECT: ${{ secrets.DOPPLER_DEPLOY_PROJECT }}
-        run: >-
-          docker compose run --rm --no-deps
-          -e DOPPLER_DEPLOY_TOKEN -e GITHUB_TOKEN -e GITHUB_REPOSITORY -e GITHUB_ACTIONS
-          -e DEPLOYMENT_ENVIRONMENT -e RUN_ID -e PULL_REQUEST_NUMBER -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME -e CLOUDFLARE_ZONE_ID -e CLOUDFLARE_ZONE_NAME -e DOMAIN_SUFFIX
-          -e DOPPLER_DEPLOY_PROJECT
-          tools sh -ec 'if [ -n "$RUN_ID" ]; then exec npx tsx scripts/preview/preview-cli.ts destroy; else exec npx tsx scripts/preview/preview-cli.ts destroy --pr "$PULL_REQUEST_NUMBER"; fi'
+        # Closed-run payloads can omit PR associations. Reconcile private ownership against live PR state.
+        run: |
+          docker compose run --rm --no-deps \
+          -e DOPPLER_DEPLOY_TOKEN -e GITHUB_TOKEN -e GITHUB_REPOSITORY -e GITHUB_ACTIONS \
+          -e DEPLOYMENT_ENVIRONMENT -e RUN_ID -e PULL_REQUEST_NUMBER -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME -e CLOUDFLARE_ZONE_ID -e CLOUDFLARE_ZONE_NAME -e DOMAIN_SUFFIX \
+          -e DOPPLER_DEPLOY_PROJECT \
+          tools sh -ec '
+            if [ -n "$RUN_ID" ]; then
+              exec npx tsx scripts/preview/preview-cli.ts reconcile
+            fi
+
+            exec npx tsx scripts/preview/preview-cli.ts destroy --pr "$PULL_REQUEST_NUMBER"
+          '
       - name: Cleanup PostgreSQL branches after Cloudflare resources
         if: always()
         uses: ./.github/actions/cleanup-preview-database
