@@ -35,7 +35,7 @@ services:
     profiles: [tools]
     init: true
     working_dir: /workspace
-    volumes: [".:/workspace:ro"]
+    volumes: [".:/workspace:ro", "dependencies:/workspace/node_modules:ro"]
     environment:
       BASE_URL: http://frontend:5173
       TEST_API_TOKEN: local-development-only

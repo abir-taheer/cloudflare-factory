@@ -14,22 +14,27 @@ Only the frontend has a `workers.dev` address. API, workflow and DO access stays
 
 ## One-time configuration
 
-Create the GitHub environment **cloudflare-preview**. Restrict deployment branches to the protected default branch. Configure these **environment variables**, independently of Doppler:
+Use Doppler projects `cloudflare-factory-ci`, `cloudflare-factory-api`, `cloudflare-factory-frontend`, `cloudflare-factory-workflows`, and `cloudflare-factory-executor`, each with dev/preview/prod configs. App directories map to their own development config; omit the CI project from local default scopes. Preview reads app baselines and generates PR bindings without creating Doppler configs or using write tokens.
 
-| Variable | Meaning |
+Create GitHub environment **cloudflare-preview**, restricted to the protected default branch. Configure independent environment variables:
+
+| Variable | Value |
 | --- | --- |
-| `PREVIEW_ACCOUNT_ID` | Exact permitted Cloudflare account ID |
-| `PREVIEW_ACCOUNT_NAME` | Exact account name, verified by a live account read |
-| `PREVIEW_DOPPLER_PROJECT` | Expected Doppler project |
-| `PREVIEW_DOPPLER_CONFIG` | Expected dedicated preview config |
+| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ACCOUNT_NAME` | Exact permitted account ID and live account name |
+| `DOPPLER_DEPLOY_PROJECT` | `cloudflare-factory-ci` |
+| `DOPPLER_API_PROJECT` | `cloudflare-factory-api` |
+| `DOPPLER_FRONTEND_PROJECT` | `cloudflare-factory-frontend` |
+| `DOPPLER_WORKFLOWS_PROJECT` | `cloudflare-factory-workflows` |
 
-Its only stored secret is **`DOPPLER_TOKEN`**, a read-only service token for that config. Do not duplicate it at repository scope. GitHub supplies its own short-lived read-only `GITHUB_TOKEN` for provenance checks.
+Environment secrets `DOPPLER_DEPLOY_TOKEN`, `DOPPLER_API_TOKEN`, `DOPPLER_FRONTEND_TOKEN`, and `DOPPLER_WORKFLOWS_TOKEN` are read-only service tokens for those projects' **preview** configs. Cleanup, reconciliation and local access need only the deploy token/project. Do not duplicate tokens at repository scope. GitHub supplies read-only `GITHUB_TOKEN` for provenance checks. Executor credentials are not consumed by the Cloudflare controller.
 
-The Doppler preview config must contain:
+All app configs require `ENVIRONMENT=dev|preview|prod` matching their config. API additionally requires `API_TOKEN` in prod (at least 20 non-whitespace characters, never the local development token); preview replaces baseline authentication with its HMAC-derived token. Cloudflare frontend/workflows need only `ENVIRONMENT`; resource bindings are generated. Unknown baseline keys are not forwarded to Workers. Portable frontend keys `API_URL` and `PORT` remain app-owned.
+
+The CI project's preview config must contain:
 
 | Key | Meaning |
 | --- | --- |
-| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` | Account-scoped preview control-plane access |
+| `ACCOUNT_ID`, `ACCOUNT_NAME`, `CLOUDFLARE_API_TOKEN` | Identity must match independent GitHub variables; account-scoped preview control-plane access |
 | `PREVIEW_STATE_BUCKET` | Pre-created private R2 control bucket; never bound to an app or deleted by cleanup |
 | `PREVIEW_R2_ACCESS_KEY_ID`, `PREVIEW_R2_SECRET_ACCESS_KEY` | R2 S3 credentials for control state and draining PR buckets |
 | `PREVIEW_WORKERS_SUBDOMAIN` | Account subdomain without `.workers.dev`; checked against Cloudflare |
@@ -51,7 +56,7 @@ Push the controller files to the protected default branch before opening the fir
 
 ## Authorized local Docker access
 
-Set `DOPPLER_TOKEN` securely in the host environment, along with `GH_TOKEN` for read-only repository/PR access, `PREVIEW_REPOSITORY=owner/repository`, and the four expected account/Doppler variables above. Do not fake `GITHUB_ACTIONS`. Never paste tokens into commands, terminal recordings, PR comments or logs.
+Set the four `DOPPLER_*_TOKEN` values securely in the host environment, along with `GH_TOKEN` for read-only repository/PR access, `PREVIEW_REPOSITORY=owner/repository`, and the expected account/project variables above. Do not fake `GITHUB_ACTIONS`. Never paste tokens into commands, terminal recordings, PR comments or logs.
 
 Build without deployment credentials:
 
@@ -63,9 +68,9 @@ Start one authorized tools shell, forwarding values by name rather than embeddin
 
 ```sh
 docker compose run --rm --no-deps \
-  -e DOPPLER_TOKEN -e GH_TOKEN -e PREVIEW_REPOSITORY \
-  -e PREVIEW_ACCOUNT_ID -e PREVIEW_ACCOUNT_NAME \
-  -e PREVIEW_DOPPLER_PROJECT -e PREVIEW_DOPPLER_CONFIG \
+  -e DOPPLER_DEPLOY_TOKEN -e DOPPLER_API_TOKEN -e DOPPLER_FRONTEND_TOKEN -e DOPPLER_WORKFLOWS_TOKEN -e GH_TOKEN -e PREVIEW_REPOSITORY \
+  -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME \
+  -e DOPPLER_DEPLOY_PROJECT -e DOPPLER_API_PROJECT -e DOPPLER_FRONTEND_PROJECT -e DOPPLER_WORKFLOWS_PROJECT \
   tools sh
 ```
 

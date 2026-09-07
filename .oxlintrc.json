@@ -178,6 +178,10 @@
   },
   "overrides": [
     {
+      "files": ["packages/platform/src/adapters/pg-client.d.ts"],
+      "rules": { "import/unambiguous": "off" }
+    },
+    {
       "files": [
         "**/*.ts",
         "**/*.tsx"

@@ -1,5 +1,5 @@
 import { Effect, Layer } from "effect";
-import { Client } from "pg";
+import Client from "pg/lib/client.js";
 import { CapabilityError, Database } from "../capability-services.js";
 import { capabilityOperation } from "./capability-operation.js";
 import { makePostgresDatabase } from "./postgres-database.js";
@@ -9,6 +9,7 @@ export const noteDatabaseSchemaVersion = "notes-v1";
 /** Only the request-local Hyperdrive connection string crosses this provider boundary. */
 export interface HyperdriveDatabaseBinding { readonly connectionString: string }
 
+/** Import pg's exported JS client directly to exclude its optional native driver and Pool from Workers. */
 /** One pg Client per Effect scope; supply per request/invocation, never in a shared Worker ManagedRuntime. */
 export const hyperdriveDatabaseLayer = (binding: HyperdriveDatabaseBinding) => Layer.effect(Database, Effect.gen(function* () {
   const client = yield* Effect.acquireRelease(

@@ -23,9 +23,9 @@ test("Doppler rejects a token for another project or environment without leaking
   let config = { DOPPLER_PROJECT: "factory-ci", DOPPLER_CONFIG: "preview" };
   const mockedFetch = mock.method(globalThis, "fetch", () => Promise.resolve(Response.json(config)));
   try {
-    await assert.rejects(Effect.runPromise(loadDeploymentDoppler("API", "preview")), /Deployment Doppler scope verification failed/u);
+    await assert.rejects(Effect.runPromise(loadDeploymentDoppler("API", "preview")), { operation: "Deployment Doppler scope verification failed" });
     config = { DOPPLER_PROJECT: "factory-api", DOPPLER_CONFIG: "prod" };
-    await assert.rejects(Effect.runPromise(loadDeploymentDoppler("API", "preview")), /Deployment Doppler scope verification failed/u);
+    await assert.rejects(Effect.runPromise(loadDeploymentDoppler("API", "preview")), { operation: "Deployment Doppler scope verification failed" });
     config = { DOPPLER_PROJECT: "factory-api", DOPPLER_CONFIG: "preview" };
     assert.deepEqual(await Effect.runPromise(loadDeploymentDoppler("API", "preview")), config);
   } finally {
