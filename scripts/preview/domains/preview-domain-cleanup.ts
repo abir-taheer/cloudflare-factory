@@ -38,6 +38,21 @@ function removePreviewDomainCertificate(
     }
 
     if (pack !== null) {
+      // A wildcard covers child records as well as a literal wildcard DNS record.
+      for (const hostname of pack.hosts.filter((host) => host !== domain.hostname)) {
+        const records = yield* hostname.startsWith("*.")
+          ? provider.listDnsDescendants(domain.hostname)
+          : provider.listDns(hostname);
+
+        if (records.length > 0) {
+          return yield* Effect.fail(
+            new PreviewFailure({
+              operation: "Preview certificate additional hostname in use; refusing deletion",
+            }),
+          );
+        }
+      }
+
       const references = yield* provider.listDomains();
 
       const certificateIds = new Set(

@@ -1,9 +1,11 @@
 import { z } from "zod";
+import { Effect, Schedule } from "effect";
 import { previewIo, previewRecord } from "../preview/preview-model.ts";
 
 const publicRuntimeKeys = 2;
 const smokeRequestTimeoutMs = 10_000;
 const httpUnauthorized = 401;
+const smokePropagationRetries = 20;
 
 const ProductionUrlsSchema = z.strictObject({ api: z.url(), frontend: z.url() });
 type ProductionUrls = z.infer<typeof ProductionUrlsSchema>;
@@ -109,4 +111,4 @@ export const verifyProductionApplication = (
     if (app === "frontend" || app === "all") {
       await verifyProductionFrontend(urls);
     }
-  });
+  }).pipe(Effect.retry({ times: smokePropagationRetries, schedule: Schedule.spaced("3 seconds") }));
