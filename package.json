@@ -14,17 +14,17 @@
   ],
   "scripts": {
     "dev": "docker compose up --build --wait",
-    "dev:doppler": "bash scripts/development/doppler-development.sh",
+    "dev:doppler": "bash scripts/development/doppler_development.sh",
     "dev:down": "docker compose down",
     "check": "npm run lint && npm run test:unit",
-    "lint": "prettier --check . && npm run check:generated --workspace @factory/api-client && node packages/lint-rules/path-conventions.mjs && node --test \"packages/lint-rules/tests/**/*.test.mjs\" && eslint --config packages/lint-rules/eslint-manifests.config.mjs package.json \"apps/*/package.json\" \"packages/*/package.json\" --max-warnings 0 && oxlint --type-aware --type-check --deny-warnings && npm run lint:react-hooks && npm run lint:react-doctor",
-    "test:unit": "tsx --test \"scripts/**/*.test.ts\" packages/platform/src/*.test.ts apps/*/src/*.test.ts",
+    "lint": "prettier --check . && npm run check:generated --workspace @factory/api-client && node packages/lint-rules/path_conventions.mjs && node --test \"packages/lint-rules/tests/**/*.test.mjs\" && eslint --config packages/lint-rules/eslint_manifests.config.mjs package.json \"apps/*/package.json\" \"packages/*/package.json\" --max-warnings 0 && oxlint --type-aware --type-check --deny-warnings && npm run lint:react-hooks && npm run lint:react-doctor",
+    "test:unit": "tsx --test \"scripts/**/*.test.ts\" \"packages/platform/src/**/*.test.ts\" apps/*/src/*.test.ts",
     "test:e2e": "playwright test",
-    "preview:deploy": "tsx scripts/preview/preview-cli.ts deploy",
-    "preview:destroy": "tsx scripts/preview/preview-cli.ts destroy",
+    "preview:deploy": "tsx scripts/preview/preview_cli.ts deploy",
+    "preview:destroy": "tsx scripts/preview/preview_cli.ts destroy",
     "format": "prettier --write .",
-    "lint:react-hooks": "node packages/lint-rules/node_modules/eslint/bin/eslint.js --config packages/lint-rules/eslint-react-hooks.config.mjs \"apps/frontend/src/**/*.{ts,tsx}\" --max-warnings 0 --no-inline-config",
-    "lint:react-doctor": "tsx apps/frontend/scripts/node-check-react-doctor.ts"
+    "lint:react-hooks": "node packages/lint-rules/node_modules/eslint/bin/eslint.js --config packages/lint-rules/eslint_react_hooks.config.mjs \"apps/frontend/src/**/*.{ts,tsx}\" --max-warnings 0 --no-inline-config",
+    "lint:react-doctor": "tsx apps/frontend/scripts/node_check_react_doctor.ts"
   },
   "dependencies": {
     "@effect/platform-node": "4.0.0-rc.112",

@@ -8,8 +8,8 @@
     "./http": "./src/http.ts"
   },
   "scripts": {
-    "generate": "tsx scripts/node-generate.ts",
-    "check:generated": "tsx --test scripts/public-openapi.test.ts && tsx scripts/node-generate.ts --check",
+    "generate": "tsx scripts/node_generate.ts",
+    "check:generated": "tsx --test scripts/public_openapi.test.ts && tsx scripts/node_generate.ts --check",
     "check": "tsc --noEmit -p tsconfig.json"
   },
   "peerDependencies": {

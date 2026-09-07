@@ -1,15 +1,15 @@
-import { apiHttpStatus } from "../../../../../http/api-errors.js";
+import { apiHttpStatus } from "../../../../../http/api_errors.js";
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi";
 import { Effect } from "effect";
-import type { ApiHonoEnvironment } from "../../../../../http/api-context.js";
+import type { ApiHonoEnvironment } from "../../../../../http/api_context.js";
 import { ApiErrorSchema, ApiIdParamsSchema, ApiNoteSchema } from "@factory/api-contract/schema";
 import {
   apiErrorResponses,
   apiJsonContent,
   apiValidationHook,
-} from "../../../../../http/api-openapi.js";
-import { runRouteEffect } from "../../../../../http/run-route-effect.js";
-import { getApiNote } from "../../../../../services/note-operations.js";
+} from "../../../../../http/api_openapi.js";
+import { runRouteEffect } from "../../../../../http/run_route_effect.js";
+import { getApiNote } from "../../../../../services/note_operations.js";
 
 const route = createRoute({
   method: "get",

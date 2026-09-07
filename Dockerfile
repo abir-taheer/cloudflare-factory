@@ -5,7 +5,6 @@ COPY package.json package-lock.json ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/frontend/package.json ./apps/frontend/
 COPY apps/workflows/package.json ./apps/workflows/
-COPY apps/executor/package.json ./apps/executor/
 COPY packages/api-client/package.json ./packages/api-client/
 COPY packages/api-contract/package.json ./packages/api-contract/
 COPY packages/auth/package.json ./packages/auth/
@@ -20,7 +19,7 @@ RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --workspace=@factory/
 
 FROM dependencies AS build-base
 COPY tsconfig.json ./
-COPY scripts/build/build-node-cli.ts ./scripts/build/
+COPY scripts/build/build_node_cli.ts ./scripts/build/
 
 FROM build-base AS api-build
 COPY packages/platform ./packages/platform
@@ -40,10 +39,6 @@ COPY packages/platform ./packages/platform
 COPY apps/workflows ./apps/workflows
 RUN npm run build:node --workspace=@factory/workflows
 
-FROM build-base AS executor-build
-COPY apps/executor ./apps/executor
-RUN npm run build:node --workspace=@factory/executor
-
 FROM node:24-trixie-slim@sha256:50c3b2f6988dfc307b86e5301d69611af31f4789bdf232863b07d3b02fe55ae0 AS slim-runtime
 WORKDIR /app
 ENV NODE_ENV=production
@@ -57,37 +52,32 @@ ENV NODE_ENV=production
 FROM slim-runtime AS api-slim
 COPY --from=api-build /workspace/apps/api/dist ./dist
 EXPOSE 8787
-CMD ["dist/node-api.mjs"]
+CMD ["dist/node_api.mjs"]
 
 FROM distroless-runtime AS api
 COPY --from=api-build /workspace/apps/api/dist ./dist
 EXPOSE 8787
-CMD ["dist/node-api.mjs"]
+CMD ["dist/node_api.mjs"]
 
 FROM slim-runtime AS frontend-slim
 COPY --from=frontend-build /workspace/apps/frontend/dist ./dist
 EXPOSE 5173
-CMD ["dist/node-frontend.mjs"]
+CMD ["dist/node_frontend.mjs"]
 
 FROM distroless-runtime AS frontend
 COPY --from=frontend-build /workspace/apps/frontend/dist ./dist
 EXPOSE 5173
-CMD ["dist/node-frontend.mjs"]
+CMD ["dist/node_frontend.mjs"]
 
 FROM distroless-runtime AS workflows
 COPY --from=workflow-dependencies /workspace/node_modules ./node_modules
 COPY --from=workflows-build /workspace/apps/workflows/dist ./dist
-CMD ["dist/node-workflows.mjs"]
+CMD ["dist/node_workflows.mjs"]
 
 FROM slim-runtime AS workflows-slim
 COPY --from=workflow-dependencies /workspace/node_modules ./node_modules
 COPY --from=workflows-build /workspace/apps/workflows/dist ./dist
-CMD ["dist/node-workflows.mjs"]
-
-FROM slim-runtime AS executor
-COPY --from=executor-build /workspace/apps/executor/dist ./dist
-EXPOSE 8090
-CMD ["dist/node-executor.mjs"]
+CMD ["dist/node_workflows.mjs"]
 
 # Explicit target keeps Docker-only watchers and verification outside final app images.
 FROM dependencies AS development

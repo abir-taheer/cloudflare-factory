@@ -3,26 +3,26 @@
 import { Effect, Layer } from "effect";
 import { Pool } from "pg";
 import { createClient } from "redis";
-import { createPortableS3Client } from "./s3-client.js";
+import { createPortableS3Client } from "./storage/s3_client.js";
 import { Client, Connection } from "@temporalio/client";
-import { createTemporalConnectionOptions } from "./temporal-connection-options.js";
-import { createPortableSmtpTransport } from "./smtp-transport.js";
-import { postgresDatabaseLayer } from "./postgres-database.js";
-import { s3ObjectStoreLayer } from "./s3-object-store.js";
+import { createTemporalConnectionOptions } from "./workflows/temporal_connection_options.js";
+import { createPortableSmtpTransport } from "./email/smtp_transport.js";
+import { postgresDatabaseLayer } from "./database/postgres_database.js";
+import { s3ObjectStoreLayer } from "./storage/s3_object_store.js";
 import {
   redisCoordinatorLayer,
   redisKeyValueLayer,
   redisQueueLayer,
-} from "./redis-capabilities.js";
-import { temporalWorkflowLayer } from "./temporal-workflow.js";
-import { smtpEmailLayer } from "./email-adapters.js";
-import { capabilityOperation } from "./capability-operation.js";
+} from "./coordination/redis_capabilities.js";
+import { temporalWorkflowLayer } from "./workflows/temporal_workflow.js";
+import { smtpEmailLayer } from "./email/email_adapters.js";
+import { capabilityOperation } from "./capability_operation.js";
 import {
   type PortablePlatformConfig,
   PortablePlatformConfigSchema,
-} from "../configuration/portable-configuration.js";
+} from "../configuration/portable_configuration.js";
 
-export type { PortablePlatformConfig } from "../configuration/portable-configuration.js";
+export type { PortablePlatformConfig } from "../configuration/portable_configuration.js";
 
 function validatePortableConfiguration(config: PortablePlatformConfig): void {
   const parsed = PortablePlatformConfigSchema.safeParse(config);
@@ -126,7 +126,12 @@ export {
   smtpEmailLayer,
 };
 
-export { consumeRedisJobs, ensureRedisQueueGroup, reclaimRedisJobs } from "./redis-capabilities.js";
-export { httpSandboxLayer, unavailableSandboxLayer } from "./sandbox-adapters.js";
-export { captureEmailLayer, makeCaptureEmailService } from "./capture-email.js";
-export { createTemporalConnectionOptions } from "./temporal-connection-options.js";
+export {
+  consumeRedisJobs,
+  ensureRedisQueueGroup,
+  reclaimRedisJobs,
+} from "./coordination/redis_capabilities.js";
+
+export { unavailableSandboxLayer } from "./sandbox/sandbox_adapters.js";
+export { captureEmailLayer, makeCaptureEmailService } from "./email/capture_email.js";
+export { createTemporalConnectionOptions } from "./workflows/temporal_connection_options.js";

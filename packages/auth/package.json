@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/better-authentication.ts",
-    "./configuration": "./src/authentication-configuration.ts"
+    ".": "./src/better_authentication.ts",
+    "./configuration": "./src/authentication_configuration.ts"
   },
   "scripts": {
     "check": "tsc --noEmit"

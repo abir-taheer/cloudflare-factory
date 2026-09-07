@@ -1,10 +1,10 @@
 # Independent production deployments
 
-Use only `dev`, `preview` and `prod`. Production uses PostgreSQL through Hyperdrive, never D1 or a preview database. The manual **Production deploy** workflow accepts `api`, `frontend`, `workflows`, or `all`. It runs only on current `main`, deploys only the selected app, and verifies its production behavior. Use `all` for the initial dependency-ordered bootstrap. This workflow does not deploy the local Docker executor.
+Use only `dev`, `preview` and `prod`. Production uses PostgreSQL through Hyperdrive, never D1 or a preview database. **Production deploy** releases only the current repository default branch (`main`, `master`, or another configured name). Manual dispatch accepts `api`, `frontend`, `workflows`, or `all`; use `all` and `allow_create=true` for the initial dependency-ordered bootstrap. After bootstrap and verification, set the repository variable `DEPLOY_ON_MERGE=true` to release `all` on default-branch pushes with `allow_create=false`. Unconfigured templates skip automatic releases; unset the variable to return to manual releases.
 
 ## Protected configuration
 
-Create the GitHub environment `cloudflare-prod`, restrict it to `main`, and require release approval. Use four distinct Doppler projects: deployment CI, API, frontend, and workflows. Each uses a `prod` config; preview uses separate config values and a separate database project.
+Create the GitHub environment `cloudflare-prod`, restrict it to the repository default branch, and require release approval. Both automatic and manual releases use this protected environment. Use four distinct Doppler projects: deployment CI, API, frontend, and workflows. Each uses a `prod` config; preview uses separate config values and a separate database project.
 
 Configure these **named-environment secrets** in `cloudflare-prod`; private identity values must be masked in Actions step logs:
 
@@ -56,18 +56,18 @@ Hyperdrive receives only the validated direct PostgreSQL origin, with caching di
 ## Release and verification
 
 1. Keep production resource identifiers and names in GitHub/Doppler or private state, not source, docs, or Wrangler files. Wrangler configurations are generated under `/tmp` and removed after upload.
-2. Dispatch from `main`, select one app, and leave `allow_create` false for routine releases. First bootstrap requires separately registered data resources, `all`, and explicit `allow_create=true`.
-3. Credential-free jobs run the shared strict validation and Docker blackbox suite, then build only the selected application artifacts. The protected job builds trusted tooling before receiving secrets and downloads only this run's artifact. Provenance must match the selected app, repository ID and unchanged main SHA.
+2. Dispatch from the repository default branch, select one app, and leave `allow_create` false for routine manual releases. First bootstrap requires separately registered data resources, `all`, and explicit `allow_create=true`. Once `DEPLOY_ON_MERGE=true` is enabled, default-branch pushes release the whole stack without resource creation.
+3. Credential-free jobs run the shared strict validation and Docker blackbox suite, then build only the selected application artifacts. The protected job builds trusted tooling before receiving secrets and downloads only this run's artifact. Provenance must match the selected app, repository ID and unchanged default-branch SHA. The controller verifies GitHub's actual repository identity, `default_branch` and current head against the typed `DEFAULT_BRANCH`, `GITHUB_REF` and revision before mutations and final sign-off; there is no fallback to `main`.
 4. Only bundled modules/static assets are uploaded. No artifact code, package hooks or application build commands run with deployment credentials. Runtime secrets are projected from only the selected app's config. The frontend Vite build is credential-free; the trusted deploy step copies validated assets into its private temporary directory and writes public `runtime-config.json` containing only `API_URL` and `ENVIRONMENT`.
 5. Successful release requires owner/revision and ingress readback plus HTTP verification. Frontend checks HTML/security headers and exact-origin API CORS; API checks health/readiness, OpenAPI availability, CORS and unauthenticated denial. Workflows checks its owner/release and private ingress, plus dependent API readiness; this does not prove an authenticated end-to-end job. API and frontend use distinct single-label sibling hosts below the configured production domain suffix. All workers.dev and version-preview URLs are disabled; workflows remain private. The frontend has only an assets binding, no API service binding or proxy. Do not attach out-of-band zone routes.
 
-Independent deployments require their dependencies already deployed; use `all` for first bootstrap. Production verification is read-only; authenticated user/job tests require separate explicit authorization. Failures do not trigger destructive cleanup or automatic rollback. Correct the issue and deploy a reviewed main revision; ordinary releases preserve resource identities.
+Independent deployments require their dependencies already deployed; use `all` for first bootstrap. Production verification is read-only; authenticated user/job tests require separate explicit authorization. Failures do not trigger destructive cleanup or automatic rollback. Correct the issue and deploy a reviewed default-branch revision; ordinary releases preserve resource identities.
 
 Local checks, without production credentials or Worker emulators:
 
 ```sh
 docker compose run --rm tools sh -ec 'npx oxlint --type-aware --type-check --deny-warnings scripts'
-docker compose run --rm tools sh -ec 'node --import tsx --test scripts/production/*.test.ts'
+docker compose run --rm tools sh -ec 'node --import tsx --test scripts/production/**/*.test.ts'
 ```
 
 Sources: [Workers static assets](https://developers.cloudflare.com/workers/static-assets/), [Hyperdrive configuration](https://developers.cloudflare.com/api/resources/hyperdrive/subresources/configs/methods/get/), [GitHub deployment environments](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments).

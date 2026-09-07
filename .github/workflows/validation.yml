@@ -1,13 +1,14 @@
 name: Validation
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
   workflow_call:
 permissions:
   contents: read
 jobs:
   validate:
+    if: github.event_name != 'push' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -34,7 +35,7 @@ jobs:
           scan_status=0
           docker run --rm --network none --workdir /repo -v "$PWD:/repo:ro" \
             "$GITLEAKS_IMAGE" git /repo --log-opts=--all \
-            --config /repo/gitleaks-history.toml --redact=100 --no-banner \
+            --config /repo/gitleaks_history.toml --redact=100 --no-banner \
             --ignore-gitleaks-allow --gitleaks-ignore-path /tmp/no-ignores || scan_status=1
           docker run --rm --network none -v "$scan_dir:/content:ro" \
             -v "$PWD/.gitleaks.toml:/config/gitleaks.toml:ro" \
@@ -81,22 +82,12 @@ jobs:
           tags: factory-workflows:local
           cache-from: type=gha,scope=workflows-linux-amd64
           cache-to: type=gha,mode=max,scope=workflows-linux-amd64
-      - name: Build executor runtime image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: .
-          target: executor
-          load: true
-          tags: factory-executor:local
-          cache-from: type=gha,scope=executor-linux-amd64
-          cache-to: type=gha,mode=max,scope=executor-linux-amd64
       - name: Start portable infrastructure and apps
         run: docker compose -f compose.yaml -f compose.test.yaml up --wait --wait-timeout 240
       - name: Unit and all real-service integration tests
         run: >-
           docker compose run --rm --no-deps
           -e PLATFORM_INTEGRATION=1 -e PLATFORM_STORAGE_INTEGRATION=1 -e PLATFORM_WORKFLOW_INTEGRATION=1
-          -e PLATFORM_EXECUTOR_INTEGRATION=1 -e EXECUTOR_URL=http://executor:8090/execute -e EXECUTOR_TOKEN=local-executor-development-only
           tools npm run test:unit
       - name: Browser blackbox tests
         run: docker compose -f compose.yaml -f compose.test.yaml run --rm browser-tests

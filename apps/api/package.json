@@ -15,13 +15,13 @@
     "zod": "4.5.4"
   },
   "scripts": {
-    "dev": "tsx watch src/node-api.ts",
-    "start": "node dist/node-api.mjs",
+    "dev": "tsx watch src/node_api.ts",
+    "start": "node dist/node_api.mjs",
     "lint": "oxlint --type-aware --type-check --deny-warnings src",
     "build": "npm run build:node",
-    "build:node": "tsx ../../scripts/build/build-node-cli.ts api",
+    "build:node": "tsx ../../scripts/build/build_node_cli.ts api",
     "test": "tsx --test src/*.test.ts",
     "test:integration": "playwright test --config=../../playwright.config.ts --grep \"all authenticated|invalid note\"",
-    "build:worker": "tsx ../../scripts/build/build-worker.ts src/cloudflare-api.ts dist/cloudflare-api.mjs"
+    "build:worker": "tsx ../../scripts/build/build_worker.ts src/cloudflare_api.ts dist/cloudflare-api.mjs"
   }
 }

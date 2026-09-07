@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { blackboxConfiguration } from "./tests/blackbox-configuration.js";
+import { blackboxConfiguration } from "./tests/blackbox_configuration.js";
 
 /** Production Docker services share localhost origins; no proxies or fake test servers. */
 export default defineConfig({

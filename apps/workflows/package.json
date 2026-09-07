@@ -12,13 +12,13 @@
     "redis": "6.2.1"
   },
   "scripts": {
-    "dev": "tsx watch src/node-workflows.ts",
-    "start": "node dist/node-workflows.mjs",
+    "dev": "tsx watch src/node_workflows.ts",
+    "start": "node dist/node_workflows.mjs",
     "lint": "oxlint --type-aware --type-check --deny-warnings src",
     "build": "npm run build:node",
-    "build:node": "tsx ../../scripts/build/build-node-cli.ts workflows",
+    "build:node": "tsx ../../scripts/build/build_node_cli.ts workflows",
     "test": "npm run test:integration",
     "test:integration": "playwright test --config=../../playwright.config.ts --grep \"^real note storage\"",
-    "build:worker": "tsx ../../scripts/build/build-worker.ts src/cloudflare-workflows.ts dist/cloudflare-workflows.mjs"
+    "build:worker": "tsx ../../scripts/build/build_worker.ts src/cloudflare_workflows.ts dist/cloudflare-workflows.mjs"
   }
 }

@@ -1,8 +1,9 @@
 # Working agreements
 
-- Follow the [agent workflow](docs/agent-workflow.md) for implementation, PR previews and verification evidence; read the nearest app/package `AGENTS.md` before editing.
+- This is a product template: build complete features, verify them in isolated environments, and merge reviewed work into the product's default branch.
+- Follow the [agent workflow](./docs/agent_workflow.md) for implementation, PR previews and verification evidence; read the nearest app/package `AGENTS.md` before editing.
 - Before writing code, read [How coding agents read your code](https://modem.dev/blog/how-coding-agents-read-your-code). Use searchable domain names and one spelling per concept.
-- Use kebab-case for authored files and folders; preserve tool-required names. Keep modules focused, remove abandoned paths, and check the surrounding folder structure when adding or moving code.
+- Use snake_case for authored filenames and kebab-case for folders; preserve tool-required names. Group files by domain; the linter caps module folders at 14 files (workspace roots at 20). Remove abandoned paths when moving code.
 - Run development, dependency installation and verification in Docker (`docker compose run --rm tools …`). Never use Wrangler dev, Miniflare or remote bindings locally.
 - Backend and infrastructure code uses Effect v4. Verify APIs against the pinned package and official v4 docs; v3 examples are incompatible.
 - Define input contracts with Zod 4.5 and infer types. Reuse schema `.pick()`/`.omit()`/`.extend()` and type `Pick`/`Omit`; do not duplicate shapes. Effect Schema is forbidden; Effect handles runtime orchestration and errors.
@@ -13,6 +14,7 @@
 - When replacing an implementation, remove its abandoned code, dependencies, configuration, tests and documentation in the same change.
 - Establish a passing strict lint baseline before adding features; never defer lint cleanup or weaken rules to accommodate new code.
 - Prefer small, established implementations over custom infrastructure or unnecessarily heavy dependencies.
+- Test observable behavior and security boundaries; never add change-detector tests that pin internal structure, incidental ordering or implementation details.
 - At every checkpoint, request an independent agent review using Glen's `abir-pr-review` skill before committing.
 - Run `npm run check` and blackbox tests before pushing. Keep this file concise; document commands and architecture elsewhere.
 - Publish a fresh audited snapshot before going public; this private repository's history contains retired machine-specific settings.

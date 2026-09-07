@@ -4,14 +4,14 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./cloudflare": "./src/cloudflare-frontend.ts",
-    "./node": "./src/node-frontend.ts"
+    "./cloudflare": "./src/cloudflare_frontend.ts",
+    "./node": "./src/node_frontend.ts"
   },
   "scripts": {
-    "dev": "tsx src/node-vite.ts",
-    "build": "tsx src/node-build.ts",
-    "start": "node dist/node-frontend.mjs",
-    "build:node": "tsx ../../scripts/build/build-node-cli.ts frontend",
+    "dev": "tsx src/node_vite.ts",
+    "build": "tsx src/node_build.ts",
+    "start": "node dist/node_frontend.mjs",
+    "build:node": "tsx ../../scripts/build/build_node_cli.ts frontend",
     "check": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

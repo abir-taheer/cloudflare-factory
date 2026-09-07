@@ -1,0 +1,31 @@
+name: Preview build
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+concurrency:
+  group: preview-build-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    uses: ./.github/workflows/validation.yml
+  build:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      # No named environment, secrets, management token, or privileged shared cache here.
+      - name: Build credential-free Worker modules and assets
+        run: docker compose run --rm --no-deps --user "$(id -u):$(id -g)" -e HOME=/tmp tools npx tsx scripts/build/preview_build_cli.ts . /workspace/preview-artifact
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        with:
+          name: preview-bundle
+          path: preview-artifact/
+          if-no-files-found: error
+          retention-days: 2
