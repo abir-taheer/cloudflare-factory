@@ -1,0 +1,62 @@
+name: Preview deploy
+on:
+  workflow_run:
+    workflows: [Preview build]
+    types: [completed]
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+# All mutations serialize; the R2 conditional lock also excludes local Docker runs.
+concurrency:
+  group: cloudflare-preview-lifecycle
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: cloudflare-preview
+    steps:
+      # workflow_run uses the default branch. Never check out the PR here.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Build trusted deployment tooling
+        run: docker compose build tools
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: preview-bundle
+          path: preview-artifact
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+      - name: Provision, deploy, and verify
+        env:
+          DOPPLER_API_TOKEN: ${{ secrets.DOPPLER_API_TOKEN }}
+          DOPPLER_API_PROJECT: ${{ vars.DOPPLER_API_PROJECT }}
+          DOPPLER_FRONTEND_TOKEN: ${{ secrets.DOPPLER_FRONTEND_TOKEN }}
+          DOPPLER_FRONTEND_PROJECT: ${{ vars.DOPPLER_FRONTEND_PROJECT }}
+          DOPPLER_WORKFLOWS_TOKEN: ${{ secrets.DOPPLER_WORKFLOWS_TOKEN }}
+          DOPPLER_WORKFLOWS_PROJECT: ${{ vars.DOPPLER_WORKFLOWS_PROJECT }}
+          DOPPLER_DEPLOY_TOKEN: ${{ secrets.DOPPLER_DEPLOY_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_ACTIONS: 'true'
+          PREVIEW_ENVIRONMENT: cloudflare-preview
+          PREVIEW_RUN_ID: ${{ github.event.workflow_run.id }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_NAME: ${{ vars.CLOUDFLARE_ACCOUNT_NAME }}
+          DOPPLER_DEPLOY_PROJECT: ${{ vars.DOPPLER_DEPLOY_PROJECT }}
+        run: >-
+          docker compose run --rm --no-deps
+          -e DOPPLER_API_TOKEN -e DOPPLER_API_PROJECT
+          -e DOPPLER_FRONTEND_TOKEN -e DOPPLER_FRONTEND_PROJECT
+          -e DOPPLER_WORKFLOWS_TOKEN -e DOPPLER_WORKFLOWS_PROJECT
+          -e DOPPLER_DEPLOY_TOKEN -e GITHUB_TOKEN -e GITHUB_REPOSITORY -e GITHUB_ACTIONS
+          -e PREVIEW_ENVIRONMENT -e PREVIEW_RUN_ID -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME
+          -e DOPPLER_DEPLOY_PROJECT
+          tools sh -ec 'npx playwright install --with-deps chromium >/dev/null 2>&1; exec npx tsx scripts/preview-cli.ts deploy'

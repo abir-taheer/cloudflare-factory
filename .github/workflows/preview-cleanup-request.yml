@@ -1,0 +1,11 @@
+name: Preview cleanup request
+on:
+  pull_request:
+    types: [closed]
+permissions: {}
+jobs:
+  request:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - run: echo 'Cleanup requested; the trusted default-branch controller checks PR state.'

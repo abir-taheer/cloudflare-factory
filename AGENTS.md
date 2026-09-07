@@ -3,5 +3,6 @@
 - Backend and infrastructure code uses Effect v4. Verify APIs against the pinned package and official v4 docs; v3 examples are incompatible.
 - Domain services must not import Cloudflare types. Bindings belong in provider adapters; retain a working portable adapter for each capability.
 - Preview resources and credentials must be independent of production. Fail closed on missing ownership or configuration; never infer production fallbacks.
+- Use only dev, preview and prod. Runtime configuration is typed; each app has its own Doppler project, with CI credentials in a separate project.
 - Deploy credentials come from Doppler through named GitHub environments. Never commit rendered deployment configuration, tokens, account identifiers or local state.
 - Run `npm run check` and blackbox tests before pushing. Keep this file concise; document commands and architecture elsewhere.

@@ -1,0 +1,29 @@
+name: Validation
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Start portable infrastructure and apps
+        run: docker compose up --build --wait --wait-timeout 240
+      - name: Strict checks and all real-service integration tests
+        run: >-
+          docker compose run --rm --no-deps
+          -e PLATFORM_INTEGRATION=1 -e PLATFORM_STORAGE_INTEGRATION=1 -e PLATFORM_WORKFLOW_INTEGRATION=1
+          tools npm run check
+      - name: Browser blackbox tests
+        run: docker compose run --rm browser-tests
+      - name: Stop isolated CI infrastructure
+        if: always()
+        run: docker compose down --volumes --remove-orphans

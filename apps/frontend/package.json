@@ -1,0 +1,19 @@
+{
+  "name": "@factory/frontend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./cloudflare": "./src/cloudflare-frontend.ts",
+    "./node": "./src/node-frontend.ts"
+  },
+  "scripts": {
+    "start": "tsx src/node-frontend.ts",
+    "check": "tsc --noEmit -p tsconfig.json",
+    "test": "tsx --test src/*.test.ts",
+    "test:browser": "tsx tests/frontend-browser.ts"
+  },
+  "dependencies": {
+    "effect": "4.0.0-rc.112"
+  }
+}

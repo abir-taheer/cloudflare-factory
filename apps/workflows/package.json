@@ -1,0 +1,24 @@
+{
+  "name": "@factory/workflows",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "dependencies": {
+    "@cloudflare/sandbox": "0.12.9",
+    "@factory/platform": "*",
+    "@temporalio/worker": "1.23.0",
+    "@temporalio/workflow": "1.23.0",
+    "effect": "4.0.0-rc.112",
+    "redis": "6.2.1"
+  },
+  "scripts": {
+    "dev": "tsx watch src/node-workflows.ts",
+    "start": "node --import tsx dist/node-workflows.js",
+    "lint": "oxlint --type-aware --type-check --deny-warnings src",
+    "build": "npm run build:node",
+    "build:node": "esbuild src/node-workflows.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/node-workflows.js && cp src/temporal-workflow.ts dist/temporal-workflow.ts",
+    "test": "npm run test:integration",
+    "test:integration": "playwright test --config=../../playwright.config.ts --grep \"^real note storage\"",
+    "build:worker": "esbuild src/cloudflare-workflows.ts --bundle --format=esm --platform=neutral --conditions=workerd,worker,browser --main-fields=module,main --external:cloudflare:* --external:node:* --outfile=dist/cloudflare-workflows.mjs"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@factory/api",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "dependencies": {
+    "@factory/platform": "*",
+    "effect": "4.0.0-rc.112",
+    "@effect/platform-node": "4.0.0-rc.112"
+  },
+  "scripts": {
+    "dev": "tsx watch src/node-api.ts",
+    "start": "node --import tsx dist/node-api.js",
+    "lint": "oxlint --type-aware --type-check --deny-warnings src",
+    "build": "npm run build:node",
+    "build:node": "esbuild src/node-api.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/node-api.js",
+    "test": "tsx --test src/*.test.ts",
+    "test:integration": "playwright test --config=../../playwright.config.ts --grep \"all authenticated|invalid note\"",
+    "build:worker": "esbuild src/cloudflare-api.ts --bundle --format=esm --platform=neutral --conditions=workerd,worker,browser --main-fields=module,main --external:cloudflare:* --external:node:* --outfile=dist/cloudflare-api.mjs"
+  }
+}

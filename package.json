@@ -1,0 +1,45 @@
+{
+  "name": "cloudflare-factory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "packageManager": "npm@11.19.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "docker compose up --build --wait",
+    "dev:down": "docker compose down",
+    "check": "npm run lint && npm run test:unit",
+    "lint": "oxlint --type-aware --type-check --deny-warnings",
+    "test:unit": "tsx --test scripts/*.test.ts packages/platform/src/*.test.ts apps/*/src/*.test.ts",
+    "test:e2e": "playwright test",
+    "preview:deploy": "tsx scripts/preview-cli.ts deploy",
+    "preview:destroy": "tsx scripts/preview-cli.ts destroy"
+  },
+  "dependencies": {
+    "effect": "4.0.0-rc.112",
+    "@effect/platform-node": "4.0.0-rc.112"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "@types/node": "24.13.3",
+    "tsx": "4.23.13",
+    "oxlint": "1.81.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "@playwright/test": "1.63.0",
+    "wrangler": "4.129.0",
+    "@cloudflare/workers-types": "5.20260907.1",
+    "esbuild": "0.28.2",
+    "@aws-sdk/client-s3": "3.1127.0"
+  },
+  "overrides": {
+    "redis": "6.2.1",
+    "@cloudflare/workers-types": "5.20260907.1"
+  }
+}

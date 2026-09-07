@@ -1,0 +1,353 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "unicorn",
+    "oxc",
+    "import",
+    "promise"
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "pedantic": "error",
+    "perf": "error",
+    "style": "error",
+    "restriction": "error",
+    "nursery": "error"
+  },
+  "options": {
+    "typeAware": true,
+    "typeCheck": true,
+    "denyWarnings": true,
+    "maxWarnings": 0,
+    "reportUnusedDisableDirectives": "error"
+  },
+  "env": {
+    "builtin": true
+  },
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/.wrangler/**",
+    "**/.turbo/**",
+    "**/worker-configuration.d.ts"
+  ],
+  "rules": {
+    "no-console": "error",
+    "no-nested-ternary": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": [
+              "cloudflare:*",
+              "@effect/platform-node",
+              "@effect/platform-node/*"
+            ],
+            "message": "Runtime packages belong in the documented Node or Worker entrypoint/adapter paths."
+          }
+        ]
+      }
+    ],
+    "typescript/consistent-type-assertions": [
+      "error",
+      {
+        "assertionStyle": "never"
+      }
+    ],
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "error",
+    "typescript/no-floating-promises": [
+      "error",
+      {
+        "checkThenables": true,
+        "ignoreVoid": false,
+        "ignoreIIFE": false
+      }
+    ],
+    "typescript/no-misused-promises": "error",
+    "typescript/await-thenable": "error",
+    "typescript/switch-exhaustiveness-check": "error",
+    "unicorn/filename-case": [
+      "error",
+      {
+        "case": "kebabCase"
+      }
+    ],
+    "new-cap": [
+      "error",
+      {
+        "capIsNew": false
+      }
+    ],
+    "one-var": [
+      "error",
+      "never"
+    ],
+    "func-names": "off",
+    "func-style": "off",
+    "id-length": "off",
+    "no-magic-numbers": "off",
+    "no-ternary": "off",
+    "no-undefined": "off",
+    "no-underscore-dangle": "off",
+    "sort-imports": "off",
+    "sort-keys": "off",
+    "import/exports-last": "off",
+    "import/group-exports": "off",
+    "import/no-named-export": "off",
+    "import/no-namespace": "off",
+    "import/no-relative-parent-imports": "off",
+    "import/prefer-default-export": "off",
+    "oxc/no-optional-chaining": "off",
+    "oxc/no-rest-spread-properties": "off",
+    "typescript/explicit-function-return-type": "off",
+    "typescript/explicit-module-boundary-types": "off",
+    "typescript/no-extraneous-class": "off",
+    "typescript/non-nullable-type-assertion-style": "off",
+    "typescript/prefer-readonly-parameter-types": "off",
+    "typescript/promise-function-async": "off",
+    "unicorn/consistent-function-scoping": "off",
+    "unicorn/no-null": "off",
+    "unicorn/no-static-only-class": "off",
+    "unicorn/prefer-global-this": "off",
+    "unicorn/prefer-ternary": "off",
+    "unicorn/throw-new-error": "off",
+    "curly": [
+      "error",
+      "multi-line"
+    ],
+    "complexity": [
+      "error",
+      25
+    ],
+    "max-statements": [
+      "error",
+      50
+    ],
+    "max-lines-per-function": [
+      "error",
+      {
+        "max": 150,
+        "skipBlankLines": true,
+        "skipComments": true
+      }
+    ],
+    "max-params": [
+      "error",
+      6
+    ],
+    "unicorn/max-nested-calls": [
+      "error",
+      {
+        "max": 8
+      }
+    ],
+    "max-classes-per-file": "off",
+    "prefer-destructuring": "off",
+    "import/consistent-type-specifier-style": "off",
+    "typescript/consistent-type-imports": [
+      "error",
+      {
+        "prefer": "type-imports",
+        "fixStyle": "inline-type-imports"
+      }
+    ],
+    "no-duplicate-imports": "off",
+    "oxc/no-async-await": "off",
+    "require-await": "off",
+    "no-plusplus": [
+      "error",
+      {
+        "allowForLoopAfterthoughts": true
+      }
+    ],
+    "typescript/explicit-member-accessibility": [
+      "error",
+      {
+        "accessibility": "no-public"
+      }
+    ],
+    "typescript/parameter-properties": "off",
+    "no-inline-comments": "off",
+    "capitalized-comments": "off"
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/*.ts",
+        "**/*.tsx"
+      ],
+      "rules": {
+        "no-undef": "off"
+      }
+    },
+    {
+      "files": [
+        "apps/*/src/node-*.ts",
+        "packages/platform/src/adapters/**/*.ts",
+        "scripts/**/*.ts",
+        "apps/api/src/portable-configuration.ts"
+      ],
+      "env": {
+        "node": true
+      },
+      "rules": {
+        "import/no-nodejs-modules": "off",
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "cloudflare:*"
+                ],
+                "message": "Worker-only imports belong in Cloudflare adapters."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "apps/*/src/cloudflare-*.ts",
+        "packages/platform/src/adapters/cloudflare*.ts",
+        "packages/platform/src/adapters/d1-*.ts",
+        "packages/platform/src/adapters/r2-*.ts"
+      ],
+      "rules": {
+        "import/no-nodejs-modules": "error",
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@effect/platform-node",
+                  "@effect/platform-node/*"
+                ],
+                "message": "Cloudflare adapters cannot import the Node platform implementation."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "apps/*/src/cloudflare-*.ts"
+      ],
+      "rules": {
+        "import/no-default-export": "off",
+        "import/no-anonymous-default-export": "off",
+        "unicorn/no-anonymous-default-export": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/platform/src/adapters/**/*.ts",
+        "apps/*/src/node-*.ts",
+        "apps/*/src/cloudflare-*.ts",
+        "scripts/**/*.ts"
+      ],
+      "rules": {
+        "oxc/no-async-endpoint-handlers": "off"
+      }
+    },
+    {
+      "files": [
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "tests/**/*.ts"
+      ],
+      "env": {
+        "node": true
+      },
+      "rules": {
+        "import/no-nodejs-modules": "off",
+        "typescript/no-floating-promises": [
+          "error",
+          {
+            "checkThenables": true,
+            "ignoreVoid": false,
+            "ignoreIIFE": false,
+            "allowForKnownSafeCalls": [
+              {
+                "from": "package",
+                "package": "node:test",
+                "name": [
+                  "test",
+                  "describe",
+                  "it",
+                  "suite"
+                ]
+              }
+            ]
+          }
+        ],
+        "typescript/require-await": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/platform/src/adapters/**/*.ts",
+        "apps/*/src/cloudflare-*.ts"
+      ],
+      "rules": {
+        "typescript/method-signature-style": "off",
+        "typescript/require-await": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/platform/src/adapters/**/*.ts",
+        "scripts/**/*.ts",
+        "apps/frontend/src/frontend-http.ts",
+        "apps/api/src/api-handler.ts"
+      ],
+      "rules": {
+        "no-await-in-loop": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/platform/src/index.ts",
+        "packages/platform/src/adapters/portable.ts"
+      ],
+      "rules": {
+        "oxc/no-barrel-file": "off",
+        "unicorn/prefer-export-from": "off"
+      }
+    },
+    {
+      "files": [
+        "apps/frontend/public/**/*.js"
+      ],
+      "env": {
+        "browser": true
+      },
+      "rules": {
+        "import/unambiguous": "off",
+        "unicorn/prefer-module": "off",
+        "no-implicit-globals": "off"
+      }
+    },
+    {
+      "files": [
+        "playwright.config.ts"
+      ],
+      "env": {
+        "node": true
+      },
+      "rules": {
+        "import/no-default-export": "off",
+        "import/no-anonymous-default-export": "off"
+      }
+    }
+  ]
+}
