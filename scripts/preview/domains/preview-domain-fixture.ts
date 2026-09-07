@@ -82,11 +82,17 @@ function attachDomainResponse(
 
   remote.domains.set(id, domain);
 
+  let hosts = [domain.hostname];
+
+  if (remote.generatedCertificate) {
+    hosts = [credentials.domains.zoneName, domain.hostname, `*.${domain.hostname}`];
+  }
+
   remote.certificates.set(certId, {
     id: certId,
     type: "advanced",
-    hosts: [domain.hostname],
-    certificates: [{ id: randomUUID(), hosts: [domain.hostname] }],
+    hosts,
+    certificates: [],
   });
 
   remote.dns.set(domain.hostname, { id: randomUUID(), name: domain.hostname });
@@ -142,10 +148,17 @@ function domainProviderResponse(
   }
 
   if (url.pathname === `${zonePath}/dns_records` && method === "GET") {
-    return domainInventoryResponse(
-      [...remote.dns.values()].filter((record) => record.name === url.searchParams.get("name")),
-      url,
-    );
+    const suffix = url.searchParams.get("name.endswith");
+
+    const records = [...remote.dns.values()].filter((record) => {
+      if (suffix !== null) {
+        return record.name.endsWith(suffix);
+      }
+
+      return record.name === url.searchParams.get("name");
+    });
+
+    return domainInventoryResponse(records, url);
   }
 
   const certificatesPath = `${zonePath}/ssl/certificate_packs`;
@@ -210,6 +223,7 @@ export function previewDomainFixture(context: TestContext) {
     certificates: new Map<string, CloudflareCertificatePack>(),
     dns: new Map<string, DnsRecord>(),
     failure: "",
+    generatedCertificate: false,
     zoneAccountId: owner.accountId,
   };
 
