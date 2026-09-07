@@ -16,6 +16,7 @@ const standardFiles = new Set([
 ]);
 
 const rootToolFiles = new Set([
+  ".git",
   ".dockerignore",
   ".gitignore",
   ".gitattributes",
