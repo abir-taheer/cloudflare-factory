@@ -41,7 +41,7 @@
     "prettier": "3.9.6",
     "react-doctor": "0.9.13",
     "tsx": "4.23.13",
-    "typescript": "6.0.3",
+    "typescript": "7.0.2",
     "wrangler": "4.129.0"
   },
   "overrides": {
