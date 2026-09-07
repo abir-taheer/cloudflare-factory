@@ -7,6 +7,7 @@ import { createClient } from "redis";
 import { type BackgroundJob, Workflow } from "@factory/platform";
 import {
   consumeRedisJobs,
+  createTemporalConnectionOptions,
   ensureRedisQueueGroup,
   portablePlatformLayer,
   reclaimRedisJobs,
@@ -40,7 +41,7 @@ const program = Effect.gen(function* () {
 
   const connection = yield* Effect.acquireRelease(
     Effect.tryPromise(() =>
-      NativeConnection.connect({ address: configuration.temporalAddress }),
+      NativeConnection.connect(createTemporalConnectionOptions(configuration)),
     ).pipe(
       Effect.tapError(() =>
         Effect.logWarning("Temporal startup connection failed; retrying").pipe(

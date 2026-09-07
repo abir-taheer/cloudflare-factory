@@ -4,9 +4,9 @@ import type { PreviewManifest } from "../preview-model.ts";
 import type { PreviewCloudflare, PreviewCredentials } from "../cloudflare/preview-cloudflare.ts";
 import type { PreviewStateStore } from "../lifecycle/preview-state.ts";
 import {
-  type PreviewDomainProvider,
-  createPreviewDomainProvider,
-} from "./preview-domain-provider.ts";
+  type CloudflareDomainProvider,
+  createCloudflareDomainProvider,
+} from "../../shared/domains/cloudflare-domain-provider.ts";
 import {
   assertPreviewDomainIdentity,
   ownedPreviewCertificate,
@@ -17,7 +17,7 @@ import type { PreviewDomainState } from "./preview-domain-model.ts";
 function removePreviewDomainCertificate(
   manifest: PreviewManifest,
   domain: PreviewDomainState,
-  provider: PreviewDomainProvider,
+  provider: CloudflareDomainProvider,
   state: PreviewStateStore,
 ) {
   return Effect.gen(function* () {
@@ -79,7 +79,7 @@ function removePreviewDomainCertificate(
 function detachPreviewDomain(
   manifest: PreviewManifest,
   domain: PreviewDomainState,
-  provider: PreviewDomainProvider,
+  provider: CloudflareDomainProvider,
   state: PreviewStateStore,
 ) {
   return Effect.gen(function* () {
@@ -182,7 +182,7 @@ export function cleanupPreviewDomains(
       return yield* Effect.void;
     }
 
-    const provider = createPreviewDomainProvider(credentials);
+    const provider = createCloudflareDomainProvider(credentials);
     yield* provider.verifyZone();
 
     for (const domain of domains) {

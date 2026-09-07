@@ -104,6 +104,9 @@ test("portable boundary parses numeric ports and explicit isolated namespaces", 
     namespace: "factory",
     temporalNamespace: "default",
     taskQueue: "factory-notes",
+    s3Region: "us-east-1",
+    s3ForcePathStyle: true,
+    temporalSecurity: {},
   });
 });
 
@@ -134,6 +137,10 @@ test("portable boundary rejects invalid endpoints, missing isolation and malform
     { TEMPORAL_TASK_QUEUE: "" },
     { PLATFORM_NAMESPACE: "" },
     { S3_SECRET_ACCESS_KEY: "" },
+    { S3_REGION: "invalid region" },
+    { S3_FORCE_PATH_STYLE: "yes" },
+    { TEMPORAL_TLS: "yes" },
+    { TEMPORAL_TLS: "false", TEMPORAL_API_KEY: "private-value" },
     { ENVIRONMENT: "local" },
   ];
 

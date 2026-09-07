@@ -3,8 +3,9 @@
 import { Effect, Layer } from "effect";
 import { Pool } from "pg";
 import { createClient } from "redis";
-import { S3Client } from "@aws-sdk/client-s3";
+import { createPortableS3Client } from "./s3-client.js";
 import { Client, Connection } from "@temporalio/client";
+import { createTemporalConnectionOptions } from "./temporal-connection-options.js";
 import { createPortableSmtpTransport } from "./smtp-transport.js";
 import { postgresDatabaseLayer } from "./postgres-database.js";
 import { s3ObjectStoreLayer } from "./s3-object-store.js";
@@ -74,20 +75,7 @@ export const portablePlatformLayer = (config: PortablePlatformConfig) =>
       yield* capabilityOperation("redis", "connect", () => redis.connect());
 
       const s3 = yield* Effect.acquireRelease(
-        capabilityOperation(
-          "objectStore",
-          "connect",
-          async () =>
-            new S3Client({
-              endpoint: config.s3Endpoint,
-              region: "us-east-1",
-              forcePathStyle: true,
-              credentials: {
-                accessKeyId: config.s3AccessKeyId,
-                secretAccessKey: config.s3SecretAccessKey,
-              },
-            }),
-        ),
+        capabilityOperation("objectStore", "connect", async () => createPortableS3Client(config)),
         (client) =>
           Effect.sync(() => {
             client.destroy();
@@ -96,7 +84,7 @@ export const portablePlatformLayer = (config: PortablePlatformConfig) =>
 
       const connection = yield* Effect.acquireRelease(
         capabilityOperation("workflow", "connect", () =>
-          Connection.connect({ address: config.temporalAddress }),
+          Connection.connect(createTemporalConnectionOptions(config)),
         ),
         (acquiredConnection) =>
           Effect.promise(() => acquiredConnection.close()).pipe(
@@ -141,3 +129,4 @@ export {
 export { consumeRedisJobs, ensureRedisQueueGroup, reclaimRedisJobs } from "./redis-capabilities.js";
 export { httpSandboxLayer, unavailableSandboxLayer } from "./sandbox-adapters.js";
 export { captureEmailLayer, makeCaptureEmailService } from "./capture-email.js";
+export { createTemporalConnectionOptions } from "./temporal-connection-options.js";

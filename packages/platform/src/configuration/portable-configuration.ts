@@ -2,6 +2,11 @@ import { type ConfigProvider, Effect } from "effect";
 import { z } from "zod";
 import { loadConfigurationValues } from "./configuration-values.js";
 import {
+  TemporalEnvironmentSchema,
+  TemporalSecuritySchema,
+  temporalEnvironmentKeys,
+} from "./temporal-configuration.js";
+import {
   SmtpEnvironmentSchema,
   SmtpSecuritySchema,
   smtpEnvironmentOptions,
@@ -55,6 +60,11 @@ const PortableEnvironmentSchema = z.object({
   S3_ACCESS_KEY_ID: NonemptySettingSchema,
   S3_SECRET_ACCESS_KEY: NonemptySettingSchema,
   S3_BUCKET: NonemptySettingSchema,
+  S3_REGION: NonemptySettingSchema.default("us-east-1"),
+  S3_FORCE_PATH_STYLE: z
+    .enum(["true", "false"])
+    .transform((value) => value === "true")
+    .default(true),
   SMTP_HOST: NonemptySettingSchema,
   SMTP_PORT: z
     .string()
@@ -75,6 +85,9 @@ export const PortablePlatformConfigSchema = SmtpSecuritySchema.safeExtend({
   s3AccessKeyId: PortableEnvironmentSchema.shape.S3_ACCESS_KEY_ID,
   s3SecretAccessKey: PortableEnvironmentSchema.shape.S3_SECRET_ACCESS_KEY,
   s3Bucket: PortableEnvironmentSchema.shape.S3_BUCKET,
+  s3Region: NonemptySettingSchema.optional(),
+  s3ForcePathStyle: z.boolean().optional(),
+  temporalSecurity: TemporalSecuritySchema.optional(),
   smtpHost: PortableEnvironmentSchema.shape.SMTP_HOST,
   smtpPort: z.number().int().min(1).max(maximumNetworkPort),
   temporalAddress: PortableEnvironmentSchema.shape.TEMPORAL_ADDRESS,
@@ -98,12 +111,14 @@ export const parsePortableConfiguration = (provider: ConfigProvider.ConfigProvid
     const values = yield* loadConfigurationValues(provider, [
       ...Object.keys(PortableEnvironmentSchema.shape),
       ...Object.keys(SmtpEnvironmentSchema.shape),
+      ...temporalEnvironmentKeys,
     ]);
 
     const parsed = PortableEnvironmentSchema.safeParse(values);
     const smtp = SmtpEnvironmentSchema.safeParse(values);
+    const temporal = TemporalEnvironmentSchema.safeParse(values);
 
-    if (!parsed.success || !smtp.success) {
+    if (!parsed.success || !smtp.success || !temporal.success) {
       return yield* Effect.fail(invalidPortableConfiguration());
     }
 
@@ -116,6 +131,9 @@ export const parsePortableConfiguration = (provider: ConfigProvider.ConfigProvid
       s3AccessKeyId: value.S3_ACCESS_KEY_ID,
       s3SecretAccessKey: value.S3_SECRET_ACCESS_KEY,
       s3Bucket: value.S3_BUCKET,
+      s3Region: value.S3_REGION,
+      s3ForcePathStyle: value.S3_FORCE_PATH_STYLE,
+      temporalSecurity: temporal.data,
       smtpHost: value.SMTP_HOST,
       smtpPort: value.SMTP_PORT,
       ...smtpEnvironmentOptions(smtp.data),

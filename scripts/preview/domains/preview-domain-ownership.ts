@@ -1,19 +1,18 @@
+import type {
+  CloudflareCertificatePack,
+  CloudflareDomain,
+  CloudflareDomainConfiguration,
+} from "../../shared/domains/cloudflare-domain-model.ts";
 import { PreviewFailure, previewResource } from "../preview-model.ts";
 import type { PreviewManifest } from "../preview-model.ts";
-import {
-  type CloudflareCertificatePack,
-  type CloudflareDomain,
-  type PreviewDomainConfiguration,
-  type PreviewDomainState,
-  PreviewDomainStateSchema,
-} from "./preview-domain-model.ts";
+import { type PreviewDomainState, PreviewDomainStateSchema } from "./preview-domain-model.ts";
 
 const previewDomainCount = 2;
 
 /** Persisted scope cannot be reinterpreted when an operator changes deployment configuration. */
 export function validatePreviewDomainScope(
   manifest: PreviewManifest,
-  configuration: PreviewDomainConfiguration,
+  configuration: CloudflareDomainConfiguration,
 ) {
   const domains = manifest.domains ?? [];
 
@@ -46,7 +45,7 @@ export function validatePreviewDomainScope(
 /** A domain plan is controller-generated and contains no application input or credential material. */
 export function planPreviewDomains(
   manifest: PreviewManifest,
-  configuration: PreviewDomainConfiguration,
+  configuration: CloudflareDomainConfiguration,
 ) {
   const existing = validatePreviewDomainScope(manifest, configuration);
 

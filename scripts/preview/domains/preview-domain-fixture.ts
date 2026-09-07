@@ -11,7 +11,7 @@ import type {
   CloudflareCertificatePack,
   CloudflareDnsRecordSchema,
   CloudflareDomain,
-} from "./preview-domain-model.ts";
+} from "../../shared/domains/cloudflare-domain-model.ts";
 
 const AttachRequestSchema = z.object({
   hostname: z.string(),

@@ -37,6 +37,11 @@ test("production dispatch rejects branch, environment and app substitution befor
     ALLOW_CREATE: "false",
     CLOUDFLARE_ACCOUNT_ID: randomHex(16),
     CLOUDFLARE_ACCOUNT_NAME: randomUUID(),
+    CLOUDFLARE_ZONE_ID: randomHex(16),
+    CLOUDFLARE_ZONE_NAME: "example.test",
+    DOMAIN_SUFFIX: "prod.example.test",
+    API_URL: "https://api.prod.example.test",
+    FRONTEND_URL: "https://app.prod.example.test",
   };
 
   assert.equal(
@@ -84,7 +89,7 @@ test("production inventory refuses foreign resource names and undeclared resourc
   );
 });
 
-test("selected Worker configs use only registered PostgreSQL resources and public API and private workflow ingress", () => {
+test("selected Worker configs use only registered PostgreSQL resources and custom-domain-only ingress", () => {
   const resources = parseProductionInventory(inventory(), prefix);
 
   const owner = {
@@ -106,10 +111,11 @@ test("selected Worker configs use only registered PostgreSQL resources and publi
       app,
       "/tmp/artifacts",
       hyperdriveId,
+      { EMAIL_FROM: "auth@example.test", EMAIL_DELIVERY: "cloudflare" },
     );
 
     assert.partialDeepStrictEqual(config, {
-      workers_dev: app !== "workflows",
+      workers_dev: false,
       preview_urls: false,
       no_bundle: true,
     });
@@ -118,6 +124,19 @@ test("selected Worker configs use only registered PostgreSQL resources and publi
     assert.equal("containers" in config, false);
     assert.equal("build" in config, false);
     assert.equal("BETTER_AUTH_SECRET" in config, false);
+
+    if (app === "api") {
+      assert.deepEqual(config["send_email"], [
+        { name: "EMAIL", allowed_sender_addresses: ["auth@example.test"] },
+      ]);
+
+      assert.partialDeepStrictEqual(config["vars"], {
+        EMAIL_DELIVERY: "cloudflare",
+        EMAIL_FROM: "auth@example.test",
+      });
+    } else {
+      assert.equal("send_email" in config, false);
+    }
 
     if (app === "frontend") {
       assert.equal("services" in config, false);

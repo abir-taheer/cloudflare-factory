@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PreviewDomainConfigurationSchema } from "./domains/preview-domain-model.ts";
+import { CloudflareDomainConfigurationSchema } from "../shared/domains/cloudflare-domain-model.ts";
 
 const ResourcePrefixSchema = z.string().regex(/^[a-z][a-z0-9-]{0,15}$/u);
 
@@ -23,9 +23,9 @@ export const PreviewControllerConfigurationSchema = z.object({
   STATE_BUCKET: z.string().regex(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/u),
   R2_ACCESS_KEY_ID: z.string().min(1),
   R2_SECRET_ACCESS_KEY: z.string().min(1),
-  ZONE_ID: PreviewDomainConfigurationSchema.shape.zoneId,
-  ZONE_NAME: PreviewDomainConfigurationSchema.shape.zoneName,
-  DOMAIN_SUFFIX: PreviewDomainConfigurationSchema.shape.suffix,
+  ZONE_ID: CloudflareDomainConfigurationSchema.shape.zoneId,
+  ZONE_NAME: CloudflareDomainConfigurationSchema.shape.zoneName,
+  DOMAIN_SUFFIX: CloudflareDomainConfigurationSchema.shape.suffix,
   SANDBOX_ENABLED: z.enum(["true", "false"]).optional(),
   SANDBOX_IMAGE: z.string().min(1).optional(),
 });
@@ -42,7 +42,9 @@ export const PreviewCredentialsSchema = PreviewControllerConfigurationSchema.tra
     sandbox: config.SANDBOX_ENABLED === "true",
     sandboxImage: config.SANDBOX_IMAGE,
   }),
-).refine((credentials) => PreviewDomainConfigurationSchema.safeParse(credentials.domains).success);
+).refine(
+  (credentials) => CloudflareDomainConfigurationSchema.safeParse(credentials.domains).success,
+);
 
 /** Credential types follow the validated controller projection. */
 export type PreviewCredentials = z.infer<typeof PreviewCredentialsSchema>;

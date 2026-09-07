@@ -1,13 +1,21 @@
 import { z } from "zod";
 import { Effect } from "effect";
-import { PreviewFailure, previewIo } from "../preview-model.ts";
-import type { PreviewCredentials } from "../preview-configuration.ts";
+import { PreviewFailure, previewIo } from "../../preview/preview-model.ts";
+import type { CloudflareDomain } from "./cloudflare-domain-model.ts";
 import {
   CloudflareCertificatePackSchema,
   CloudflareDnsRecordSchema,
+  CloudflareDomainConfigurationSchema,
   CloudflareDomainSchema,
-} from "./preview-domain-model.ts";
-import type { PreviewDomainState } from "./preview-domain-model.ts";
+} from "./cloudflare-domain-model.ts";
+
+const DomainCredentialsSchema = z.object({
+  accountId: CloudflareDomainConfigurationSchema.shape.zoneId,
+  token: z.string().min(1),
+  domains: CloudflareDomainConfigurationSchema,
+});
+
+type DomainCredentials = z.infer<typeof DomainCredentialsSchema>;
 
 const requestTimeoutMs = 30_000;
 const maximumInventoryPages = 100;
@@ -28,9 +36,9 @@ const ZoneSchema = z.object({
   account: z.object({ id: z.string() }),
 });
 
-function createDomainRequest(credentials: PreviewCredentials) {
+function createDomainRequest(credentials: DomainCredentials) {
   return (path: string, method = "GET", body?: unknown) =>
-    previewIo("Preview domain provider request failed", async () => {
+    previewIo("Cloudflare domain provider request failed", async () => {
       const requestBody: Pick<RequestInit, "body"> = {};
 
       if (body !== undefined) {
@@ -65,7 +73,14 @@ function createDomainRequest(credentials: PreviewCredentials) {
 }
 
 /** Bounded, redacted API access. This adapter has no paid certificate-order or DNS-write capability. */
-export function createPreviewDomainProvider(credentials: PreviewCredentials) {
+export function createCloudflareDomainProvider(input: DomainCredentials) {
+  const parsedCredentials = DomainCredentialsSchema.safeParse(input);
+
+  if (!parsedCredentials.success) {
+    throw new Error("Cloudflare domain credentials invalid");
+  }
+
+  const credentials = parsedCredentials.data;
   const accountPath = `/accounts/${credentials.accountId}/workers/domains`;
   const zonePath = `/zones/${credentials.domains.zoneId}`;
 
@@ -84,7 +99,7 @@ export function createPreviewDomainProvider(credentials: PreviewCredentials) {
 
         if (!parsed.success) {
           return yield* Effect.fail(
-            new PreviewFailure({ operation: "Preview domain inventory invalid" }),
+            new PreviewFailure({ operation: "Cloudflare domain inventory invalid" }),
           );
         }
 
@@ -105,7 +120,7 @@ export function createPreviewDomainProvider(credentials: PreviewCredentials) {
       }
 
       return yield* Effect.fail(
-        new PreviewFailure({ operation: "Preview domain inventory limit exceeded" }),
+        new PreviewFailure({ operation: "Cloudflare domain inventory limit exceeded" }),
       );
     });
 
@@ -116,7 +131,7 @@ export function createPreviewDomainProvider(credentials: PreviewCredentials) {
 
       if (!parsed.success) {
         return yield* Effect.fail(
-          new PreviewFailure({ operation: "Preview zone unavailable or inactive" }),
+          new PreviewFailure({ operation: "Cloudflare zone unavailable or inactive" }),
         );
       }
 
@@ -127,14 +142,14 @@ export function createPreviewDomainProvider(credentials: PreviewCredentials) {
 
       if (!matches) {
         return yield* Effect.fail(
-          new PreviewFailure({ operation: "Preview zone account identity mismatch" }),
+          new PreviewFailure({ operation: "Cloudflare zone account identity mismatch" }),
         );
       }
 
       return yield* Effect.void;
     });
 
-  const attach = (domain: PreviewDomainState) =>
+  const attach = (domain: Pick<CloudflareDomain, "hostname" | "service">) =>
     Effect.gen(function* () {
       const envelope = yield* request(accountPath, "PUT", {
         hostname: domain.hostname,
@@ -146,7 +161,7 @@ export function createPreviewDomainProvider(credentials: PreviewCredentials) {
 
       if (!parsed.success) {
         return yield* Effect.fail(
-          new PreviewFailure({ operation: "Preview attached domain identity invalid" }),
+          new PreviewFailure({ operation: "Cloudflare attached domain identity invalid" }),
         );
       }
 
@@ -174,4 +189,4 @@ export function createPreviewDomainProvider(credentials: PreviewCredentials) {
   };
 }
 
-export type PreviewDomainProvider = ReturnType<typeof createPreviewDomainProvider>;
+export type CloudflareDomainProvider = ReturnType<typeof createCloudflareDomainProvider>;

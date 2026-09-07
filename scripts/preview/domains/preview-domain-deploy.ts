@@ -5,9 +5,9 @@ import type { PreviewCloudflare, PreviewCredentials } from "../cloudflare/previe
 import type { PreviewStateStore } from "../lifecycle/preview-state.ts";
 import type { PreviewDeploymentRevision } from "../cloudflare/preview-worker-deploy.ts";
 import {
-  type PreviewDomainProvider,
-  createPreviewDomainProvider,
-} from "./preview-domain-provider.ts";
+  type CloudflareDomainProvider,
+  createCloudflareDomainProvider,
+} from "../../shared/domains/cloudflare-domain-provider.ts";
 import {
   assertPreviewDomainIdentity,
   ownedPreviewCertificate,
@@ -21,7 +21,7 @@ const certificateReadbackDelay = "3 seconds";
 function recordPreviewDomainCertificate(
   manifest: PreviewManifest,
   domain: PreviewDomainState,
-  provider: PreviewDomainProvider,
+  provider: CloudflareDomainProvider,
   state: PreviewStateStore,
 ) {
   return Effect.gen(function* () {
@@ -76,7 +76,7 @@ function recordPreviewDomainCertificate(
 function attachPreviewDomain(
   manifest: PreviewManifest,
   domain: PreviewDomainState,
-  provider: PreviewDomainProvider,
+  provider: CloudflareDomainProvider,
   state: PreviewStateStore,
 ) {
   return Effect.gen(function* () {
@@ -173,7 +173,7 @@ export function deployPreviewDomains(
 
     yield* state.save(manifest);
 
-    const provider = createPreviewDomainProvider(credentials);
+    const provider = createCloudflareDomainProvider(credentials);
     yield* provider.verifyZone();
 
     for (const domain of manifest.domains) {

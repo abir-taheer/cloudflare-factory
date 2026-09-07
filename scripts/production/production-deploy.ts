@@ -1,6 +1,7 @@
+import { deployProductionDomain } from "./production-domains.ts";
 import { Effect } from "effect";
 import { loadDeploymentRuntime } from "../shared/deployment-doppler.ts";
-import { previewRecord, previewString } from "../preview/preview-model.ts";
+import { previewString } from "../preview/preview-model.ts";
 import { loadProductionContext, verifyProductionRevision } from "./production-context.ts";
 import {
   deployProductionArtifact,
@@ -12,7 +13,6 @@ import {
   renderProductionWorkerConfig,
 } from "./production-model.ts";
 import {
-  productionRequest,
   verifyProductionWorkerOwner,
   verifyProductionWorkerRelease,
   verifyProductionWorkflowOwner,
@@ -25,7 +25,7 @@ export const deployProductionApplication = () =>
   Effect.scoped(
     Effect.gen(function* () {
       const context = yield* loadProductionContext();
-      const { dispatch, config, credentials, prefix, owner } = context;
+      const { dispatch, config, credentials, prefix, owner, urls } = context;
       const selected = productionApps(dispatch.DEPLOYMENT_APP);
 
       const revision = {
@@ -40,25 +40,6 @@ export const deployProductionApplication = () =>
         JSON.parse(previewString(config["RESOURCE_INVENTORY_JSON"])),
         prefix,
       );
-
-      const subdomain = previewString(config["WORKERS_SUBDOMAIN"]);
-
-      if (!/^[a-z\d][a-z\d-]*$/u.test(subdomain)) {
-        throw new Error("Production Worker subdomain invalid");
-      }
-
-      const actualSubdomain = previewRecord(
-        yield* productionRequest(credentials, "/workers/subdomain"),
-      );
-
-      if (actualSubdomain["subdomain"] !== subdomain) {
-        throw new Error("Production account subdomain mismatch");
-      }
-
-      const urls = {
-        api: `https://${prefix}-api.${subdomain}.workers.dev`,
-        frontend: `https://${prefix}-frontend.${subdomain}.workers.dev`,
-      };
 
       const prepared = [];
       const ownerMarker = `${owner.accountId}:${owner.repositoryId}:prod:${prefix}`;
@@ -128,8 +109,15 @@ export const deployProductionApplication = () =>
           credentials,
           `${prefix}-${app}`,
           dispatch.REVISION,
-          app !== "workflows",
+          false,
         );
+      }
+
+      for (const app of selected) {
+        if (app !== "workflows") {
+          yield* verifyProductionRevision(dispatch);
+          yield* deployProductionDomain(context, app);
+        }
       }
 
       yield* verifyProductionApplication(urls, dispatch.DEPLOYMENT_APP);

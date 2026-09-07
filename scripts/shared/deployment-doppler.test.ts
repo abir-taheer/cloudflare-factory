@@ -3,6 +3,41 @@ import test, { mock } from "node:test";
 import { Effect } from "effect";
 import { loadDeploymentDoppler, parseDeploymentRuntime } from "./deployment-doppler.ts";
 
+test("production email projection requires the real Cloudflare adapter and keeps controller keys private", () => {
+  const config = {
+    ENVIRONMENT: "prod",
+    API_URL: "https://api.example.test",
+    FRONTEND_ORIGINS: "https://app.example.test",
+    EMAIL_DELIVERY: "cloudflare",
+    EMAIL_FROM: "auth@example.test",
+    BETTER_AUTH_SECRET: "synthetic-session-secret-at-least-32",
+    CLOUDFLARE_API_TOKEN: "private-controller-token",
+  };
+
+  const runtime = parseDeploymentRuntime(config, "prod", "api");
+
+  assert.partialDeepStrictEqual(runtime.vars, {
+    EMAIL_DELIVERY: "cloudflare",
+    EMAIL_FROM: config.EMAIL_FROM,
+  });
+
+  assert.deepEqual(Object.keys(runtime.secrets), ["BETTER_AUTH_SECRET"]);
+  assert.equal(JSON.stringify(runtime).includes(config.CLOUDFLARE_API_TOKEN), false);
+
+  for (const delivery of ["capture", "smtp", "", undefined]) {
+    assert.throws(() =>
+      parseDeploymentRuntime({ ...config, EMAIL_DELIVERY: delivery }, "prod", "api"),
+    );
+  }
+
+  assert.throws(() => parseDeploymentRuntime({ ...config, EMAIL_FROM: "invalid" }, "prod", "api"));
+
+  assert.equal(
+    parseDeploymentRuntime(config, "prod", "frontend").vars["EMAIL_DELIVERY"],
+    undefined,
+  );
+});
+
 test("runtime projection isolates session secrets to the API and excludes management credentials", () => {
   const config = {
     ENVIRONMENT: "preview",

@@ -67,6 +67,12 @@ const DeploymentApiSecretsSchema = z.object({
   EMAIL_FROM: z.string().min(1),
 });
 
+/** Cloudflare production cannot silently substitute a preview capture or portable SMTP adapter. */
+export const ProductionEmailSchema = z.object({
+  EMAIL_DELIVERY: z.literal("cloudflare"),
+  EMAIL_FROM: z.email(),
+});
+
 /** Public app origins cannot contain credentials, paths, queries or wildcard hosts. */
 export function parseDeploymentApiOrigin(value: unknown): string {
   const result = DeploymentApiOriginSchema.safeParse(value);
@@ -108,6 +114,14 @@ export function parseDeploymentRuntime(
     vars["EMAIL_FROM"] = secretResult.data.EMAIL_FROM;
 
     if (environment === "prod") {
+      const email = ProductionEmailSchema.safeParse(config);
+
+      if (!email.success) {
+        throw new Error("Production email configuration invalid");
+      }
+
+      Object.assign(vars, email.data);
+
       const origins = previewString(config["FRONTEND_ORIGINS"])
         .split(",")
         .map((origin) => parseDeploymentApiOrigin(origin.trim()));

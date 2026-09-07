@@ -1,3 +1,8 @@
+import { createCloudflareDomainProvider } from "../shared/domains/cloudflare-domain-provider.ts";
+import {
+  ProductionDomainPinsSchema,
+  productionDomainConfiguration,
+} from "./production-domain-configuration.ts";
 import { Config, Effect } from "effect";
 import { z } from "zod";
 import type { DatabaseHandoff } from "../shared/database/database-schema.ts";
@@ -10,6 +15,7 @@ const accountRequestTimeoutMs = 30_000;
 
 /** Only a protected manual main dispatch may obtain production management capabilities. */
 const ProductionDispatchSchema = z.strictObject({
+  ...ProductionDomainPinsSchema.shape,
   GITHUB_ACTIONS: z.literal("true"),
   DEPLOYMENT_ENVIRONMENT: z.literal("cloudflare-prod"),
   GITHUB_EVENT_NAME: z.literal("workflow_dispatch"),
@@ -25,6 +31,11 @@ const ProductionDispatchSchema = z.strictObject({
 
 /** Typed configuration reads named keys before validating the protected dispatch. */
 export const productionDispatch = Config.all({
+  CLOUDFLARE_ZONE_ID: Config.string("CLOUDFLARE_ZONE_ID"),
+  CLOUDFLARE_ZONE_NAME: Config.string("CLOUDFLARE_ZONE_NAME"),
+  DOMAIN_SUFFIX: Config.string("DOMAIN_SUFFIX"),
+  API_URL: Config.string("API_URL"),
+  FRONTEND_URL: Config.string("FRONTEND_URL"),
   GITHUB_ACTIONS: Config.string("GITHUB_ACTIONS"),
   DEPLOYMENT_ENVIRONMENT: Config.string("DEPLOYMENT_ENVIRONMENT"),
   GITHUB_EVENT_NAME: Config.string("GITHUB_EVENT_NAME"),
@@ -103,7 +114,15 @@ export const loadProductionContext = () =>
       }
     });
 
+    const network = productionDomainConfiguration(config, dispatch);
+
+    yield* createCloudflareDomainProvider({
+      ...credentials,
+      domains: network.domains,
+    }).verifyZone();
+
     return {
+      ...network,
       dispatch,
       config,
       credentials,

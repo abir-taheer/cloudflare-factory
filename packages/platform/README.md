@@ -37,8 +37,10 @@ Set `DATABASE_URL` explicitly to the intended isolated database before migration
 
 - `DATABASE_URL`, `REDIS_URL`
 - `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET`
+- Optional `S3_REGION` (default `us-east-1`) and `S3_FORCE_PATH_STYLE` (`true`/`false`, default `true`). Set path style to `false` for virtual-hosted bucket addressing.
 - `SMTP_HOST`, numeric `SMTP_PORT`; optional `SMTP_SECURE` and `SMTP_REQUIRE_TLS` (`true`/`false`, default `false`), plus paired `SMTP_USERNAME`/`SMTP_PASSWORD`. Credentials require at least one TLS flag. Use secure TLS on 465 or required STARTTLS on 587. Certificate verification remains enabled; a failed upgrade never falls back to plaintext authentication.
 - `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`, `TEMPORAL_TASK_QUEUE`
+- Optional `TEMPORAL_TLS` (`true`/`false`), `TEMPORAL_API_KEY`, `TEMPORAL_TLS_SERVER_CA_CERT_DATA`, paired `TEMPORAL_TLS_CLIENT_CERT_DATA`/`TEMPORAL_TLS_CLIENT_KEY_DATA`, and `TEMPORAL_TLS_SERVER_NAME`. Certificate values contain raw PEM. Both client and worker use the same settings. Credentials or TLS material enable TLS when the flag is absent; explicit `false` with those settings is rejected. With none supplied, local Docker remains plaintext. Server-name overrides change the expected verified hostname; certificate verification cannot be disabled. File paths and SDK profile fallbacks are not loaded.
 - `PLATFORM_NAMESPACE` and the registered `workflowType`
 
 The platform namespace prefixes Redis keys. Endpoint and credential configuration has no production fallback. Email and sandbox capabilities are supplied explicitly on Cloudflare; the portable aggregate supplies SMTP, with the HTTP executor or unavailable sandbox layer added separately. Captured authentication emails are private objects and must never be exposed through public object routes.

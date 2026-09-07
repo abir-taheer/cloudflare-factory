@@ -1,3 +1,4 @@
+import { ProductionEmailSchema } from "../shared/deployment-doppler.ts";
 import nodePath from "node:path";
 import { z } from "zod";
 import { previewRecord } from "../preview/preview-model.ts";
@@ -91,7 +92,7 @@ export function renderProductionWorkerConfig(
     no_bundle: true,
     compatibility_date: "2026-09-01",
     compatibility_flags: ["nodejs_compat"],
-    workers_dev: app !== "workflows",
+    workers_dev: false,
     preview_urls: false,
     vars: {
       ENVIRONMENT: "prod",
@@ -112,11 +113,15 @@ export function renderProductionWorkerConfig(
   }
 
   if (app === "api") {
+    const email = parseProductionValue(ProductionEmailSchema, runtime);
+
+    config["send_email"] = [{ name: "EMAIL", allowed_sender_addresses: [email.EMAIL_FROM] }];
+
     config["vars"] = {
       ...previewRecord(config["vars"]),
       API_URL: runtime["API_URL"],
       FRONTEND_ORIGINS: runtime["FRONTEND_ORIGINS"],
-      EMAIL_FROM: runtime["EMAIL_FROM"],
+      ...email,
     };
   }
 

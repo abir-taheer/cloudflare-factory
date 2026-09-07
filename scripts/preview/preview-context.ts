@@ -1,4 +1,4 @@
-import { createPreviewDomainProvider } from "./domains/preview-domain-provider.ts";
+import { createCloudflareDomainProvider } from "../shared/domains/cloudflare-domain-provider.ts";
 import { Effect } from "effect";
 import { PreviewFailure, previewString } from "./preview-model.ts";
 import {
@@ -31,7 +31,7 @@ export const loadPreviewContext = (local: boolean) =>
     const credentials = yield* loadPreviewCredentials(local);
 
     yield* verifyPreviewAccount(credentials);
-    yield* createPreviewDomainProvider(credentials).verifyZone();
+    yield* createCloudflareDomainProvider(credentials).verifyZone();
 
     const cf = createPreviewCloudflare(credentials);
     const owner = { accountId: credentials.accountId, repositoryId: String(metadata["id"]), pr: 1 };
