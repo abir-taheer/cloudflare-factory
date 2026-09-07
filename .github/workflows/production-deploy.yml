@@ -27,7 +27,7 @@ jobs:
       REVISION: ${{ github.sha }}
       REPOSITORY_ID: ${{ github.repository_id }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
@@ -76,7 +76,7 @@ jobs:
       NEON_PARENT_BRANCH_ID: ${{ secrets.NEON_PARENT_BRANCH_ID }}
       DOPPLER_DEPLOY_PROJECT: ${{ secrets.DOPPLER_DEPLOY_PROJECT }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
