@@ -33,6 +33,7 @@ runs:
           *) echo 'Database action mode invalid'; exit 1 ;;
         esac
         docker compose run --rm --no-deps \
+          --user "$(id -u):$(id -g)" -e HOME=/tmp \
           -v "$directory:/database-output" -e DATABASE_OUTPUT_FILE=/database-output/handoff.json \
           -e GITHUB_ACTIONS -e DEPLOYMENT_ENVIRONMENT -e GITHUB_EVENT_NAME -e GITHUB_REF \
           -e GITHUB_REPOSITORY -e GITHUB_TOKEN -e RUN_ID -e PR \
