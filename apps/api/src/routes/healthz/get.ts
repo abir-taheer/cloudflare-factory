@@ -1,8 +1,8 @@
-import { apiHttpStatus } from "../../http/api-errors.js";
+import { apiHttpStatus } from "../../http/api_errors.js";
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi";
 import { ApiHealthSchema } from "@factory/api-contract/schema";
-import type { ApiHonoEnvironment } from "../../http/api-context.js";
-import { apiJsonContent } from "../../http/api-openapi.js";
+import type { ApiHonoEnvironment } from "../../http/api_context.js";
+import { apiJsonContent } from "../../http/api_openapi.js";
 
 const route = createRoute({
   method: "get",

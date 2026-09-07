@@ -8,23 +8,21 @@ Cloudflare runtime is involved.
 ## Optional per-app Doppler development
 
 Use the official host Doppler CLI with an authenticated local login. Set private
-`DOPPLER_API_PROJECT`, `DOPPLER_FRONTEND_PROJECT`, `DOPPLER_WORKFLOWS_PROJECT`, and
-`DOPPLER_EXECUTOR_PROJECT` shell variables to four distinct app projects. Each must
+`DOPPLER_API_PROJECT`, `DOPPLER_FRONTEND_PROJECT`, `DOPPLER_WORKFLOWS_PROJECT` shell variables to three distinct app projects. Each must
 have a `dev` config; never use the deployment-CI project or token.
 
 Bootstrap each complete dev config from that service's `environment` in
 `compose.yaml`, including inherited `x-app.environment` for API and workflows.
 Resolve the frontend port to the same `FRONTEND_PORT` used by Compose. Copy only
 that app's settings; Doppler supplies its project/config/environment metadata.
-Initially only API `BETTER_AUTH_SECRET` and `EMAIL_FROM`, and executor
-`EXECUTOR_TOKEN`, may differ from Compose. Tokens require at least 32 URL-safe
+Initially only API `BETTER_AUTH_SECRET` and `EMAIL_FROM` may differ from Compose. Tokens require at least 32 URL-safe
 letters, digits, underscores or hyphens; the sender must be a valid email address.
 All provider URLs, database credentials, namespaces, ports and public origins
 must remain the Docker defaults. This keeps migration and application databases
 identical. Existing typed app configuration validation also runs at startup.
 
 ```sh
-bash scripts/development/doppler-development.sh
+bash scripts/development/doppler_development.sh
 ```
 
 The host runs only Doppler and Docker orchestration; validation and app runtime
@@ -38,7 +36,7 @@ rotation between downloads fails closed. No cached config is used. Re-run the
 script to refresh settings; ordinary `docker compose down` stops the services.
 
 Verify synthetic quotes, literal dollars, backslashes and multiline dotenv values
-with `bash scripts/development/test-dotenv-roundtrip.sh` after building the
+with `bash scripts/development/test_dotenv_roundtrip.sh` after building the
 development image. Boundary tests run in `npm run check`. The synthetic test proves
 Compose parsing; the per-run JSON comparison checks actual Doppler export fidelity.
 See [Doppler downloads](https://docs.doppler.com/docs/accessing-secrets) and
@@ -47,11 +45,10 @@ See [Doppler downloads](https://docs.doppler.com/docs/accessing-secrets) and
 ## Runtime images
 
 Build one runtime independently with `docker build --target api -t factory-api:local .`.
-The other targets are `frontend`, `workflows`, and `executor`. Each runs compiled
+The other targets are `frontend` and `workflows`. Each runs compiled
 JavaScript without source mounts or `tsx`. Frontend startup validates `API_URL`,
 `ENVIRONMENT`, and `PORT` and serves public configuration in memory; build assets
-contain no deployment credentials. The executor retains a shell for its bounded
-commands and must remain on the internal sandbox network with the Compose limits.
+contain no deployment credentials.
 
 For runtime-image blackbox checks, stop the development app containers first to
 free their host ports, then use a separate project with fresh database volumes:

@@ -1,10 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
-import { ApplicationProviders } from "./components/application-providers.js";
-import { loadFrontendConfiguration } from "./lib/runtime-configuration.js";
-import { installChunkRecovery } from "./lib/chunk-recovery.js";
-import { RouteErrorPage } from "./components/route-error-page.js";
+import { ApplicationProviders } from "./components/application_providers.js";
+import { loadFrontendConfiguration } from "./lib/runtime_configuration.js";
+import { installChunkRecovery } from "./lib/chunk_recovery.js";
+import { RouteErrorPage } from "./components/route_error_page.js";
 
 const rootElement = document.querySelector("#root");
 

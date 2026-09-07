@@ -89,7 +89,7 @@
     "unicorn/filename-case": [
       "error",
       {
-        "case": "kebabCase"
+        "case": "snakeCase"
       }
     ],
     "new-cap": [
@@ -269,7 +269,7 @@
   },
   "overrides": [
     {
-      "files": ["packages/api-client/src/api-paths.d.ts"],
+      "files": ["packages/api-client/src/api_paths.d.ts"],
       "rules": {
         "max-lines": "off",
         "no-magic-numbers": "off",
@@ -285,7 +285,7 @@
     },
     {
       "files": [
-        "apps/*/src/node-*.ts",
+        "apps/*/src/node_*.ts",
         "packages/platform/src/adapters/**/*.ts",
         "scripts/**/*.ts"
       ],
@@ -320,9 +320,9 @@
     },
     {
       "files": [
-        "apps/*/src/cloudflare-*.ts",
-        "packages/platform/src/adapters/cloudflare*.ts",
-        "packages/platform/src/adapters/r2-*.ts"
+        "apps/*/src/cloudflare_*.ts",
+        "packages/platform/src/adapters/**/cloudflare*.ts",
+        "packages/platform/src/adapters/**/r2_*.ts"
       ],
       "rules": {
         "import/no-nodejs-modules": "error",
@@ -351,7 +351,7 @@
       }
     },
     {
-      "files": ["apps/*/src/cloudflare-*.ts"],
+      "files": ["apps/*/src/cloudflare_*.ts"],
       "rules": {
         "import/no-default-export": "off",
         "import/no-anonymous-default-export": "off",
@@ -361,8 +361,8 @@
     {
       "files": [
         "packages/platform/src/adapters/**/*.ts",
-        "apps/*/src/node-*.ts",
-        "apps/*/src/cloudflare-*.ts",
+        "apps/*/src/node_*.ts",
+        "apps/*/src/cloudflare_*.ts",
         "scripts/**/*.ts"
       ],
       "rules": {
@@ -399,7 +399,7 @@
       }
     },
     {
-      "files": ["packages/platform/src/adapters/**/*.ts", "apps/*/src/cloudflare-*.ts"],
+      "files": ["packages/platform/src/adapters/**/*.ts", "apps/*/src/cloudflare_*.ts"],
       "rules": {
         "typescript/method-signature-style": "off",
         "typescript/require-await": "off"
@@ -409,7 +409,7 @@
       "files": [
         "packages/platform/src/adapters/**/*.ts",
         "scripts/**/*.ts",
-        "apps/api/src/api-handler.ts"
+        "apps/api/src/api_handler.ts"
       ],
       "rules": {
         "no-await-in-loop": "off"
@@ -434,9 +434,9 @@
     },
     {
       "files": [
-        "apps/*/src/node-*.ts",
-        "apps/*/src/cloudflare-*.ts",
-        "scripts/**/*-cli.ts",
+        "apps/*/src/node_*.ts",
+        "apps/*/src/cloudflare_*.ts",
+        "scripts/**/*_cli.ts",
         "**/*.test.ts",
         "**/*.spec.ts",
         "tests/**/*.ts"
@@ -466,7 +466,7 @@
       }
     },
     {
-      "files": ["packages/lint-rules/factory-lint-plugin.mjs"],
+      "files": ["packages/lint-rules/factory_lint_plugin.mjs"],
       "rules": {
         "import/no-default-export": "off"
       }
@@ -478,7 +478,7 @@
       }
     },
     {
-      "files": ["apps/api/src/http/run-route-effect.ts"],
+      "files": ["apps/api/src/http/run_route_effect.ts"],
       "rules": {
         "factory/no-effect-run": "off"
       }
@@ -490,33 +490,33 @@
       }
     },
     {
-      "files": ["packages/platform/src/adapters/migrate-postgres.ts"],
+      "files": ["packages/platform/src/adapters/database/migrate_postgres.ts"],
       "rules": {
         "factory/no-effect-run": "off"
       }
     },
     {
-      "files": ["apps/api/src/api-configuration.ts"],
+      "files": ["apps/api/src/api_configuration.ts"],
       "rules": {
         "factory/no-effect-run": "off"
       }
     },
     {
-      "files": ["packages/auth/src/authentication-email.ts"],
+      "files": ["packages/auth/src/authentication_email.ts"],
       "rules": {
         "factory/no-effect-run": "off"
       }
     },
     {
-      "files": ["apps/api/src/http/run-route-effect.ts"],
+      "files": ["apps/api/src/http/run_route_effect.ts"],
       "rules": {
         "factory/no-reannotated-auth-context": "off"
       }
     },
     {
       "files": [
-        "packages/lint-rules/eslint-manifests.config.mjs",
-        "packages/lint-rules/eslint-react-hooks.config.mjs"
+        "packages/lint-rules/eslint_manifests.config.mjs",
+        "packages/lint-rules/eslint_react_hooks.config.mjs"
       ],
       "rules": {
         "import/no-default-export": "off"
@@ -524,35 +524,34 @@
     },
     {
       "files": [
-        "apps/*/src/node-*.ts",
-        "scripts/**/*-cli.ts",
-        "scripts/build/build-worker.ts",
-        "packages/platform/src/adapters/migrate-postgres.ts"
+        "apps/*/src/node_*.ts",
+        "scripts/**/*_cli.ts",
+        "scripts/build/build_worker.ts",
+        "packages/platform/src/adapters/database/migrate_postgres.ts"
       ],
       "rules": {
         "node/no-top-level-await": "off"
       }
     },
     {
-      "files": ["packages/lint-rules/tests/**/*.mjs", "packages/lint-rules/path-conventions.mjs"],
+      "files": ["packages/lint-rules/tests/**/*.mjs", "packages/lint-rules/path_conventions.mjs"],
       "rules": {
         "factory/no-sync-node-io": "off"
       }
     },
     {
-      "files": ["packages/lint-rules/path-conventions.mjs"],
+      "files": ["packages/lint-rules/path_conventions.mjs"],
       "rules": {
         "node/no-top-level-await": "off"
       }
     },
     {
       "files": [
-        "apps/executor/src/node-executor-configuration.ts",
-        "scripts/preview/cloudflare/preview-command.ts",
-        "scripts/preview/cloudflare/preview-hyperdrive.ts",
-        "scripts/preview/preview-configuration.ts",
-        "scripts/preview/preview-context.ts",
-        "scripts/build/preview-build.ts",
+        "scripts/preview/cloudflare/preview_command.ts",
+        "scripts/preview/cloudflare/preview_hyperdrive.ts",
+        "scripts/preview/preview_configuration.ts",
+        "scripts/preview/preview_context.ts",
+        "scripts/build/preview_build.ts",
         "playwright.config.ts"
       ],
       "rules": {
@@ -561,15 +560,15 @@
     },
     {
       "files": [
-        "scripts/shared/deployment-doppler.ts",
-        "scripts/preview/cloudflare/preview-cloudflare.ts",
-        "scripts/shared/database/neon-api.ts",
-        "scripts/preview/preview-github.ts",
-        "scripts/shared/database/database-contract.ts",
-        "scripts/preview/preview-cli.ts",
-        "scripts/preview/database/preview-neon-cli.ts",
-        "scripts/preview/database/preview-migrate-cli.ts",
-        "scripts/build/production-artifacts-cli.ts"
+        "scripts/shared/deployment_doppler.ts",
+        "scripts/preview/cloudflare/preview_cloudflare.ts",
+        "scripts/shared/database/neon_api.ts",
+        "scripts/preview/github/preview_github.ts",
+        "scripts/shared/database/database_contract.ts",
+        "scripts/preview/preview_cli.ts",
+        "scripts/preview/database/preview_neon_cli.ts",
+        "scripts/preview/database/preview_migrate_cli.ts",
+        "scripts/build/production_artifacts_cli.ts"
       ],
       "rules": {
         "node/no-process-env": "off"
@@ -579,7 +578,7 @@
   "jsPlugins": [
     {
       "name": "factory",
-      "specifier": "./packages/lint-rules/factory-lint-plugin.mjs"
+      "specifier": "./packages/lint-rules/factory_lint_plugin.mjs"
     }
   ]
 }

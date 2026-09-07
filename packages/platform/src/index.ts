@@ -1,1 +1,1 @@
-export * from "./capability-services.js";
+export * from "./capability_services.js";

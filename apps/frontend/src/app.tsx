@@ -1,6 +1,6 @@
 import { Navigate, createBrowserRouter } from "react-router-dom";
-import { RouteErrorPage } from "./components/route-error-page.js";
-import { AppShell } from "./components/app-shell.js";
+import { RouteErrorPage } from "./components/route_error_page.js";
+import { AppShell } from "./components/app_shell.js";
 
 /** Lazy route modules load after public configuration, with a safe root recovery boundary. */
 export const router = createBrowserRouter([
@@ -12,14 +12,14 @@ export const router = createBrowserRouter([
       {
         path: "/workspace",
         lazy: async () => {
-          const page = await import("./pages/workspace-page.js");
+          const page = await import("./pages/workspace_page.js");
           return { Component: page.WorkspacePage };
         },
       },
       {
         path: "/:authMode",
         lazy: async () => {
-          const page = await import("./pages/auth-page.js");
+          const page = await import("./pages/auth_page.js");
           return { Component: page.AuthPage };
         },
       },

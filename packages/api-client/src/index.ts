@@ -1,6 +1,6 @@
 import createFetchClient from "openapi-fetch";
 import createQueryClient from "openapi-react-query";
-import type { paths } from "./api-paths.js";
+import type { paths } from "./api_paths.js";
 import { apiResponseValidation } from "./http.js";
 
 /** Generated paths drive transport and Query types; Better Auth session cookies use the public API origin. */

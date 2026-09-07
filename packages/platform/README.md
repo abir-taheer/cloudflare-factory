@@ -9,7 +9,7 @@ Effect `4.0.0-rc.112` provides function-style `Context.Service` keys, typed fail
 | `@factory/platform`               | Portable contracts and schemas; no provider imports                              |
 | `@factory/platform/demo`          | `runNoteJob` and the stored job-result schema                                    |
 | `@factory/platform/cloudflare`    | Hyperdrive, R2, KV, Queue, Workflow, Durable Object, email, and sandbox adapters |
-| `@factory/platform/portable`      | PostgreSQL, S3, Redis, Temporal, SMTP, and HTTP executor adapters                |
+| `@factory/platform/portable`      | PostgreSQL, S3, Redis, Temporal and SMTP adapters                                |
 | `@factory/platform/postgres`      | Drizzle factory for caller-owned PostgreSQL clients                              |
 | `@factory/platform/auth-schema`   | Generated Better Auth tables and relations                                       |
 | `@factory/platform/migrate`       | Trusted PostgreSQL migration runner                                              |
@@ -43,7 +43,7 @@ Set `DATABASE_URL` explicitly to the intended isolated database before migration
 - Optional `TEMPORAL_TLS` (`true`/`false`), `TEMPORAL_API_KEY`, `TEMPORAL_TLS_SERVER_CA_CERT_DATA`, paired `TEMPORAL_TLS_CLIENT_CERT_DATA`/`TEMPORAL_TLS_CLIENT_KEY_DATA`, and `TEMPORAL_TLS_SERVER_NAME`. Certificate values contain raw PEM. Both client and worker use the same settings. Credentials or TLS material enable TLS when the flag is absent; explicit `false` with those settings is rejected. With none supplied, local Docker remains plaintext. Server-name overrides change the expected verified hostname; certificate verification cannot be disabled. File paths and SDK profile fallbacks are not loaded.
 - `PLATFORM_NAMESPACE` and the registered `workflowType`
 
-The platform namespace prefixes Redis keys. Endpoint and credential configuration has no production fallback. Email and sandbox capabilities are supplied explicitly on Cloudflare; the portable aggregate supplies SMTP, with the HTTP executor or unavailable sandbox layer added separately. Captured authentication emails are private objects and must never be exposed through public object routes.
+The platform namespace prefixes Redis keys. Endpoint and credential configuration has no production fallback. Email and sandbox capabilities are supplied explicitly on Cloudflare; the portable aggregate supplies SMTP, with an external sandbox adapter or the unavailable sandbox layer added separately. Captured authentication emails are private objects and must never be exposed through public object routes.
 
 ## Job behavior
 
@@ -53,7 +53,7 @@ The job validates cached notes at `note/${encodeURIComponent(ownerUserId)}/${not
 
 Redis queue consumers use stream groups: `ensureRedisQueueGroup`, `consumeRedisJobs`, and `reclaimRedisJobs`. Acknowledgment follows successful downstream processing or durable acceptance; failures remain pending for recovery. Streams are not automatically trimmed. Temporal uses the job ID as workflow ID and accepts only its known already-started error as a duplicate. Workflow start confirms acceptance, not job completion.
 
-Object reads buffer modest artifacts; missing objects return null. KV is eventually consistent, with a minimum 60-second cache TTL. SMTP and Cloudflare email acceptance do not guarantee delivery. Sandbox adapters call the real Cloudflare SDK or the trusted Docker HTTP executor; command execution never runs inside the application host.
+Object reads buffer modest artifacts; missing objects return null. KV is eventually consistent, with a minimum 60-second cache TTL. SMTP and Cloudflare email acceptance do not guarantee delivery. Sandbox adapters call an external provider; command execution never runs inside the application host.
 
 ## Managed sandbox
 
@@ -63,9 +63,9 @@ Object reads buffer modest artifacts; missing objects return null. KV is eventua
 
 Explicit destroy closes retained sessions in the same service instance. Cross-host recovery assumes the original owner is no longer running; there is no distributed fencing.
 
-The trusted Docker HTTP executor remains execute-only, with shared identity and storage. It does not implement managed lifecycle or file APIs. No E2B, Daytona or Modal implementation is claimed. Cloudflare managed lifecycle is unverified live until an authorized, eligible isolated deployment runs the probe; local emulators are forbidden.
+No E2B, Daytona or Modal implementation is claimed. Cloudflare managed lifecycle is unverified live until an authorized, eligible isolated deployment runs the probe; local emulators are forbidden.
 
-The private `src/adapters/probes/cloudflare-sandbox-probe.ts` exports `runCloudflareSandboxProbe(binding, namespace)`. An authorized deployed controller can run that Effect directly, without a public route. It starts UUID-owned resources, checks command/file behavior and cleanup after success, failure and interruption, then removes its observer containers. Do not invoke it until account eligibility and cost authorization are confirmed.
+The private `src/adapters/probes/cloudflare_sandbox_probe.ts` exports `runCloudflareSandboxProbe(binding, namespace)`. An authorized deployed controller can run that Effect directly, without a public route. It starts UUID-owned resources, checks command/file behavior and cleanup after success, failure and interruption, then removes its observer containers. Do not invoke it until account eligibility and cost authorization are confirmed.
 
 ## Verification
 
@@ -73,4 +73,4 @@ Run installs and checks only in Docker, with one dependency installer at a time.
 
 Real-service tests cover PostgreSQL ownership, scoped Hyperdrive clients against PostgreSQL, migration replay, Redis leases/cache/pending recovery, S3 artifacts, SMTP acceptance, and Temporal completion/replay. Local compilation and PostgreSQL tests do not prove deployed Cloudflare behavior. Worker runtime validation requires an actual Cloudflare deployment; never use local Worker emulators or remote bindings.
 
-`PLATFORM_SMTP_INTEGRATION=1` additionally requires authenticated test servers in `SMTP_STARTTLS_HOST` and `SMTP_TLS_HOST`, with their CA trusted through `NODE_EXTRA_CA_CERTS`. `PLATFORM_EXECUTOR_INTEGRATION=1` uses `EXECUTOR_URL` and `EXECUTOR_TOKEN` for a trusted Docker executor. The local scope test proves Effect cleanup/deadline handling against real filesystem operations, not Cloudflare lifecycle.
+`PLATFORM_SMTP_INTEGRATION=1` additionally requires authenticated test servers in `SMTP_STARTTLS_HOST` and `SMTP_TLS_HOST`, with their CA trusted through `NODE_EXTRA_CA_CERTS`. The local scope test proves Effect cleanup/deadline handling against real filesystem operations, not Cloudflare lifecycle.

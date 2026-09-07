@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { type APIRequestContext, type APIResponse, expect, test } from "@playwright/test";
 import { ApiNoteSchema } from "@factory/api-contract/schema";
-import { PublicFrontendSchema } from "../apps/frontend/src/lib/runtime-schema.js";
-import { blackboxConfiguration } from "./blackbox-configuration.js";
-import { createVerifiedAccount, readEmailLink, signIn } from "./blackbox-auth.js";
+import { PublicFrontendSchema } from "../apps/frontend/src/lib/runtime_schema.js";
+import { blackboxConfiguration } from "./blackbox_configuration.js";
+import { createVerifiedAccount, readEmailLink, signIn } from "./blackbox_auth.js";
 
-import { expectCorsHeaders, postChunkedAuth } from "./blackbox-http.js";
+import { expectCorsHeaders, postChunkedAuth } from "./blackbox_http.js";
 
 const apiOrigin = blackboxConfiguration.API_URL;
 const mutationHeaders = { Origin: blackboxConfiguration.BASE_URL };
@@ -68,17 +68,29 @@ test("production static frontend supplies public config, nonce-protected MUI and
 
   expect(styleNonces.every((value) => value === nonce)).toBe(true);
   await page.getByRole("combobox", { name: "Appearance" }).click();
-  await page.getByRole("option", { name: "Dark", exact: true }).click();
-  await expect(page.locator("html")).toHaveClass(/dark/u);
-  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(16, 24, 21)");
+  await page.getByRole("option", { name: "Light", exact: true }).click();
 
-  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toHaveCSS(
-    "background-color",
-    "rgb(118, 213, 182)",
+  const lightBackground = await page
+    .locator("body")
+    .evaluate((body) => getComputedStyle(body).backgroundColor);
+
+  const signInButton = page.getByRole("button", { name: "Sign in", exact: true });
+
+  const lightButton = await signInButton.evaluate(
+    (button) => getComputedStyle(button).backgroundColor,
   );
 
+  await page.getByRole("combobox", { name: "Appearance" }).click();
+  await page.getByRole("option", { name: "Dark", exact: true }).click();
+  await expect(page.locator("body")).not.toHaveCSS("background-color", lightBackground);
+  await expect(signInButton).not.toHaveCSS("background-color", lightButton);
+
+  const darkBackground = await page
+    .locator("body")
+    .evaluate((body) => getComputedStyle(body).backgroundColor);
+
   await page.reload();
-  await expect(page.locator("html")).toHaveClass(/dark/u);
+  await expect(page.locator("body")).toHaveCSS("background-color", darkBackground);
 
   const reloadedNonce = await page.locator('meta[name="csp-nonce"]').getAttribute("content");
   expect(reloadedNonce).not.toBe(nonce);

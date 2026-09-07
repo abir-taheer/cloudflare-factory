@@ -14,7 +14,6 @@ x-app: &app
     - api-dependencies:/workspace/apps/api/node_modules
     - frontend-dependencies:/workspace/apps/frontend/node_modules
     - workflows-dependencies:/workspace/apps/workflows/node_modules
-    - executor-dependencies:/workspace/apps/executor/node_modules
     - api-client-dependencies:/workspace/packages/api-client/node_modules
     - api-contract-dependencies:/workspace/packages/api-contract/node_modules
     - auth-dependencies:/workspace/packages/auth/node_modules
@@ -66,7 +65,6 @@ services:
       - api-dependencies:/workspace/apps/api/node_modules
       - frontend-dependencies:/workspace/apps/frontend/node_modules
       - workflows-dependencies:/workspace/apps/workflows/node_modules
-      - executor-dependencies:/workspace/apps/executor/node_modules
       - api-client-dependencies:/workspace/packages/api-client/node_modules
       - api-contract-dependencies:/workspace/packages/api-contract/node_modules
       - auth-dependencies:/workspace/packages/auth/node_modules
@@ -85,7 +83,6 @@ services:
       - api-dependencies:/workspace/apps/api/node_modules:ro
       - frontend-dependencies:/workspace/apps/frontend/node_modules:ro
       - workflows-dependencies:/workspace/apps/workflows/node_modules:ro
-      - executor-dependencies:/workspace/apps/executor/node_modules:ro
       - api-client-dependencies:/workspace/packages/api-client/node_modules:ro
       - api-contract-dependencies:/workspace/packages/api-contract/node_modules:ro
       - auth-dependencies:/workspace/packages/auth/node_modules:ro
@@ -98,22 +95,6 @@ services:
       browser-dependencies: { condition: service_completed_successfully }
       frontend: { condition: service_started }
       workflows: { condition: service_started }
-  executor:
-    build: { context: ., target: executor }
-    image: factory-executor:local
-    init: true
-    user: "65534:65534"
-    read_only: true
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
-    pids_limit: 32
-    mem_limit: 128m
-    cpus: 0.5
-    tmpfs: ["/tmp:size=16m,noexec,nosuid"]
-    networks: [sandbox]
-    environment:
-      ENVIRONMENT: dev
-      EXECUTOR_TOKEN: local-executor-development-only
   temporal-init:
     image: temporalio/temporal:1.4.1
     user: root
@@ -129,7 +110,7 @@ services:
       BETTER_AUTH_SECRET: local-authentication-development-secret-only
       EMAIL_FROM: development@example.test
       EMAIL_DELIVERY: smtp
-    command: [npx, tsx, watch, apps/api/src/node-api.ts]
+    command: [npx, tsx, watch, apps/api/src/node_api.ts]
     ports: ["127.0.0.1:8787:8787"]
     healthcheck:
       test:
@@ -149,10 +130,9 @@ services:
       api: { condition: service_healthy }
   workflows:
     <<: *app
-    command: [npx, tsx, apps/workflows/src/node-workflows.ts]
+    command: [npx, tsx, apps/workflows/src/node_workflows.ts]
   tools:
     <<: *app
-    networks: [default, sandbox]
     profiles: [tools]
     user: root
     volumes:
@@ -161,7 +141,6 @@ services:
       - api-dependencies:/workspace/apps/api/node_modules
       - frontend-dependencies:/workspace/apps/frontend/node_modules
       - workflows-dependencies:/workspace/apps/workflows/node_modules
-      - executor-dependencies:/workspace/apps/executor/node_modules
       - api-client-dependencies:/workspace/packages/api-client/node_modules
       - api-contract-dependencies:/workspace/packages/api-contract/node_modules
       - auth-dependencies:/workspace/packages/auth/node_modules
@@ -224,7 +203,6 @@ volumes:
   api-dependencies:
   frontend-dependencies:
   workflows-dependencies:
-  executor-dependencies:
   api-client-dependencies:
   api-contract-dependencies:
   auth-dependencies:
@@ -234,7 +212,3 @@ volumes:
   redis-data:
   object-data:
   temporal-data:
-
-networks:
-  sandbox:
-    internal: true

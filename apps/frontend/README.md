@@ -2,11 +2,11 @@
 
 React, Vite, Router, TanStack Query and MUI. Better Auth provides signup, email verification, signin, password reset and signout. A verified session gates note storage and workflow execution.
 
-- Cloudflare entry: `src/cloudflare-frontend.ts`, ASSETS only with `assets.run_worker_first = true`.
-- Node entry: `src/node-frontend.ts`, bundled as `dist/node-frontend.mjs` beside built assets. Zod validates required `API_URL`, `ENVIRONMENT` and `PORT` at startup; `/runtime-config.json` is served in memory.
+- Cloudflare entry: `src/cloudflare_frontend.ts`, ASSETS only with `assets.run_worker_first = true`.
+- Node entry: `src/node_frontend.ts`, bundled as `dist/node_frontend.mjs` beside built assets. Zod validates required `API_URL`, `ENVIRONMENT` and `PORT` at startup; `/runtime-config.json` is served in memory.
 - Cloudflare deploys a public `dist/runtime-config.json` artifact containing only `API_URL` and `ENVIRONMENT` (`dev`, `preview`, `prod`). The browser calls the API origin directly with session credentials.
-- Docker HMR uses `src/node-vite.ts` with typed `VITE_API_URL`, `ENVIRONMENT=dev` and `PORT`.
-- `components/application-providers.tsx` owns MUI color, spacing, radius and typography tokens. Light/dark/system selection uses MUI’s persisted mode.
+- Docker HMR uses `src/node_vite.ts` with typed `VITE_API_URL`, `ENVIRONMENT=dev` and `PORT`.
+- `components/application_providers.tsx` owns MUI color, spacing, radius and typography tokens. Light/dark/system selection uses MUI’s persisted mode.
 - Production HTML gets a fresh cryptographic nonce, shared by its CSP and Emotion cache. Style elements require that nonce; MUI’s dynamic style attributes are explicitly permitted. Scripts remain self-only.
 
 Run `npm run check --workspace @factory/frontend` and `npm run build --workspace @factory/frontend` through `docker compose run --rm tools`. The real cross-origin suite in `tests/blackbox.spec.ts` uses production images, Mailpit verification/reset delivery and session revocation; see [Docker commands](../../docs/docker.md). It permits synthetic accounts only on the local development stack.

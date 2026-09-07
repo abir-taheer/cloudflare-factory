@@ -7,22 +7,22 @@
     ".": "./src/index.ts",
     "./cloudflare": "./src/adapters/cloudflare.ts",
     "./portable": "./src/adapters/portable.ts",
-    "./demo": "./src/note-demo.ts",
-    "./migrate": "./src/adapters/migrate-postgres.ts",
-    "./postgres": "./src/adapters/postgres-database.ts",
-    "./auth-schema": "./src/adapters/schema/auth-schema.ts",
-    "./capture-email": "./src/adapters/capture-email.ts",
+    "./demo": "./src/notes/note_demo.ts",
+    "./migrate": "./src/adapters/database/migrate_postgres.ts",
+    "./postgres": "./src/adapters/database/postgres_database.ts",
+    "./auth-schema": "./src/adapters/database/schema/auth_schema.ts",
+    "./capture-email": "./src/adapters/email/capture_email.ts",
     "./configuration": "./src/configuration/index.ts",
-    "./managed-sandbox": "./src/sandbox/managed-sandbox.ts",
-    "./managed-sandbox/layer": "./src/sandbox/managed-sandbox-layer.ts",
-    "./cloudflare-managed-sandbox": "./src/adapters/cloudflare-managed-sandbox.ts"
+    "./managed-sandbox": "./src/sandbox/managed_sandbox.ts",
+    "./managed-sandbox/layer": "./src/sandbox/managed_sandbox_layer.ts",
+    "./cloudflare-managed-sandbox": "./src/adapters/sandbox/cloudflare_managed_sandbox.ts"
   },
   "scripts": {
     "check": "tsc --noEmit",
-    "test": "tsx --test src/*.test.ts",
-    "db:generate": "drizzle-kit generate --dialect=postgresql --schema=./src/adapters/schema/*.ts --out=./migrations/drizzle --name=auth-notes",
-    "auth:generate": "auth generate --config ./auth-schema.config.ts --output ./src/adapters/schema/auth-schema.ts --yes",
-    "db:migrate": "tsx src/adapters/migrate-postgres.ts"
+    "test": "tsx --test \"src/**/*.test.ts\"",
+    "db:generate": "drizzle-kit generate --dialect=postgresql --schema=./src/adapters/database/schema/*.ts --out=./migrations/drizzle --name=auth-notes",
+    "auth:generate": "auth generate --config ./auth_schema.config.ts --output ./src/adapters/database/schema/auth_schema.ts --yes",
+    "db:migrate": "tsx src/adapters/database/migrate_postgres.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1127.0",

@@ -8,6 +8,3 @@ services:
   workflows:
     environment: !reset null
     env_file: ${DOPPLER_DEV_DIRECTORY:?Run npm run dev:doppler}/workflows.env
-  executor:
-    environment: !reset null
-    env_file: ${DOPPLER_DEV_DIRECTORY:?Run npm run dev:doppler}/executor.env

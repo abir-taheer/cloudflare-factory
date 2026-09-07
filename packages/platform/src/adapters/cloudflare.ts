@@ -5,15 +5,18 @@ import type {
   KVNamespace,
   R2Bucket,
 } from "@cloudflare/workers-types";
-import { type BackgroundJob, KeyValue, Queue } from "../capability-services.js";
-import { capabilityOperation, validateCacheTtl } from "./capability-operation.js";
-import { r2ObjectStoreLayer } from "./r2-object-store.js";
-import { cloudflareWorkflowLayer } from "./cloudflare-workflow.js";
+import { type BackgroundJob, KeyValue, Queue } from "../capability_services.js";
+import { capabilityOperation, validateCacheTtl } from "./capability_operation.js";
+import { r2ObjectStoreLayer } from "./storage/r2_object_store.js";
+import { cloudflareWorkflowLayer } from "./workflows/cloudflare_workflow.js";
 import {
   type CoordinatorNamespace,
   durableObjectCoordinatorLayer,
-} from "./cloudflare-coordinator.js";
-import { type HyperdriveDatabaseBinding, hyperdriveDatabaseLayer } from "./hyperdrive-database.js";
+} from "./coordination/cloudflare_coordinator.js";
+import {
+  type HyperdriveDatabaseBinding,
+  hyperdriveDatabaseLayer,
+} from "./database/hyperdrive_database.js";
 
 /** Cloudflare KV cache allows eventual consistency and minimum 60-second expiration. */
 export const cloudflareKeyValueLayer = (binding: KVNamespace) =>
@@ -66,13 +69,17 @@ export const cloudflarePlatformLayer = (bindings: CloudflarePlatformBindings) =>
     durableObjectCoordinatorLayer(bindings.COORDINATOR),
   );
 
-export { hyperdriveDatabaseLayer, acquireHyperdriveDrizzle } from "./hyperdrive-database.js";
-export type { HyperdriveDatabaseBinding } from "./hyperdrive-database.js";
-export { r2ObjectStoreLayer } from "./r2-object-store.js";
-export { cloudflareWorkflowLayer } from "./cloudflare-workflow.js";
-export { durableObjectCoordinatorLayer } from "./cloudflare-coordinator.js";
+export {
+  hyperdriveDatabaseLayer,
+  acquireHyperdriveDrizzle,
+} from "./database/hyperdrive_database.js";
 
-export { DurableObjectLeaseStorage } from "./cloudflare-coordinator.js";
-export { cloudflareEmailLayer } from "./email-adapters.js";
-export { captureEmailLayer, makeCaptureEmailService } from "./capture-email.js";
-export { cloudflareSandboxLayer, unavailableSandboxLayer } from "./sandbox-adapters.js";
+export type { HyperdriveDatabaseBinding } from "./database/hyperdrive_database.js";
+export { r2ObjectStoreLayer } from "./storage/r2_object_store.js";
+export { cloudflareWorkflowLayer } from "./workflows/cloudflare_workflow.js";
+export { durableObjectCoordinatorLayer } from "./coordination/cloudflare_coordinator.js";
+
+export { DurableObjectLeaseStorage } from "./coordination/cloudflare_coordinator.js";
+export { cloudflareEmailLayer } from "./email/email_adapters.js";
+export { captureEmailLayer, makeCaptureEmailService } from "./email/capture_email.js";
+export { cloudflareSandboxLayer, unavailableSandboxLayer } from "./sandbox/sandbox_adapters.js";
