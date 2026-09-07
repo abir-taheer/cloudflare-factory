@@ -30,6 +30,7 @@ test("path naming accepts snake_case files, compound extensions and scoped tooli
       "AGENTS.md",
       "Dockerfile",
       "package-lock.json",
+      ".git",
       ".prettierrc.json",
       ".prettierignore",
       ".github/workflows/check_paths.yml",
