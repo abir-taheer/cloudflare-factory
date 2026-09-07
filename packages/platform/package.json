@@ -39,7 +39,7 @@
     "@better-auth/drizzle-adapter": "1.7.3",
     "@cloudflare/workers-types": "5.20260907.1",
     "@types/node": "24.13.3",
-    "@types/nodemailer": "7.0.12",
+    "@types/nodemailer": "8.0.1",
     "@types/pg": "8.23.1",
     "auth": "1.7.3",
     "better-auth": "1.7.3",

@@ -2,7 +2,8 @@ title = "Public repository secret and deployment configuration checks"
 
 # Private Doppler settings and rendered Wrangler bindings stay untracked.
 # Supply resource IDs and names through environment-backed deployment generation.
-# CI scans full Git history and current tracked files; ignored .local files are not inputs.
+# CI scans credentials and resource identifiers throughout history. This full policy
+# also rejects machine-local Doppler selections in current tracked files.
 # Default secret rules apply everywhere. Identifier rules apply only to deployment config,
 # never arbitrary UUIDs, dependency hashes, image digests or GitHub Action commit pins.
 [extend]

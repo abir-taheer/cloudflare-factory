@@ -14,3 +14,4 @@
 - Prefer small, established implementations over custom infrastructure or unnecessarily heavy dependencies.
 - At every checkpoint, request an independent agent review using Glen's `abir-pr-review` skill before committing.
 - Run `npm run check` and blackbox tests before pushing. Keep this file concise; document commands and architecture elsewhere.
+- Publish a fresh audited snapshot before going public; this private repository's history contains retired machine-specific settings.

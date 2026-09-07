@@ -1,0 +1,7 @@
+title = "Full-history credential and deployment identifier checks"
+
+# Removed machine-local project selections are not credentials. Current-tree scanning
+# still rejects them; publish a clean audited snapshot instead of this private history.
+[extend]
+path = ".gitleaks.toml"
+disabledRules = ["doppler-private-settings"]

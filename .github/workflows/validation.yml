@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
@@ -32,9 +32,9 @@ jobs:
             done |
             tar --null -T - -cf - | tar -xf - -C "$scan_dir"
           scan_status=0
-          docker run --rm --network none -v "$PWD:/repo:ro" \
+          docker run --rm --network none --workdir /repo -v "$PWD:/repo:ro" \
             "$GITLEAKS_IMAGE" git /repo --log-opts=--all \
-            --config /repo/.gitleaks.toml --redact=100 --no-banner \
+            --config /repo/gitleaks-history.toml --redact=100 --no-banner \
             --ignore-gitleaks-allow --gitleaks-ignore-path /tmp/no-ignores || scan_status=1
           docker run --rm --network none -v "$scan_dir:/content:ro" \
             -v "$PWD/.gitleaks.toml:/config/gitleaks.toml:ro" \
