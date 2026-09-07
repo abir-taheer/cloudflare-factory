@@ -134,7 +134,11 @@ export function createPreviewCloudflareInventory(
           if (page >= info["total_pages"]) {
             return entries;
           }
-        } else if (rows.length < inventoryPageSize || path === "/workers/scripts") {
+        } else if (
+          rows.length < inventoryPageSize ||
+          path === "/workers/scripts" ||
+          path === "/workers/domains"
+        ) {
           return entries;
         }
       }

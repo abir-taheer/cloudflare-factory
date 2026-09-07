@@ -1,17 +1,15 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
-import { Effect } from "effect";
-import { ApiAuthentication } from "./api-authentication.js";
 import type { ApiHonoEnvironment } from "./api-context.js";
 import { apiErrorBody, apiHttpStatus } from "./api-errors.js";
 import { registerApiOpenapiRoute } from "../routes/openapi/get.js";
+import { apiAuthenticationHandler } from "../routes/api/auth/authentication-handler.js";
 import {
   apiCorsMiddleware,
   apiMethodMiddleware,
   apiSecurityMiddleware,
   apiSessionMiddleware,
 } from "./api-middleware.js";
-import { apiRequestBodyMiddleware } from "./api-request-body.js";
-import { runApiEffect } from "./run-route-effect.js";
+import { apiBodyLimitMiddleware, apiRequestBodyMiddleware } from "./api-request-body.js";
 import { registerApiBusinessRoutes, registerApiHealthRoutes } from "./api-route-registration.js";
 
 /** One router serves Node and Workers and generates the client contract without configuration. */
@@ -19,6 +17,7 @@ export const createApiApplication = () => {
   const application = new OpenAPIHono<ApiHonoEnvironment>();
 
   application.use("*", apiSecurityMiddleware, apiCorsMiddleware);
+  application.use("/api/*", apiBodyLimitMiddleware);
   registerApiHealthRoutes(application);
 
   application.openAPIRegistry.registerComponent("securitySchemes", "sessionCookie", {
@@ -29,23 +28,7 @@ export const createApiApplication = () => {
 
   registerApiOpenapiRoute(application);
 
-  application.on(["GET", "POST"], "/api/auth/*", (context) => {
-    const authenticationEffect = Effect.gen(function* () {
-      const authentication = yield* ApiAuthentication;
-      return yield* authentication.handleRequest(context.req.raw);
-    }).pipe(
-      Effect.catch(() =>
-        Effect.succeed(
-          context.json(
-            apiErrorBody(context, "Authentication unavailable", "AUTH_UNAVAILABLE", true),
-            apiHttpStatus.unavailable,
-          ),
-        ),
-      ),
-    );
-
-    return runApiEffect(context, authenticationEffect);
-  });
+  application.on(["GET", "POST"], "/api/auth/*", apiAuthenticationHandler);
 
   application.use("/api/v1/*", apiSessionMiddleware, apiMethodMiddleware, apiRequestBodyMiddleware);
   registerApiBusinessRoutes(application);

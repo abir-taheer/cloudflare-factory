@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import type { BrowserContext } from "@playwright/test";
+import type { APIResponse, BrowserContext } from "@playwright/test";
 import { previewRecord } from "../preview-model.ts";
 import { readPreviewVerificationEmail } from "./preview-email-inbox.ts";
 import type { PreviewVerificationInbox } from "./preview-email-inbox.ts";
@@ -15,6 +15,30 @@ const httpFound = 302;
 export interface PreviewPublicUrls {
   api: string;
   frontend: string;
+}
+
+/** Browser cookie storage and wire attributes must both remain isolated to this API hostname. */
+async function verifyPreviewSessionCookies(
+  context: BrowserContext,
+  response: APIResponse,
+  apiUrl: string,
+): Promise<void> {
+  const hostname = new URL(apiUrl).hostname;
+  const cookies = await context.cookies([apiUrl]);
+
+  const cookieHeaders = response
+    .headersArray()
+    .filter((header) => header.name.toLowerCase() === "set-cookie");
+
+  const parentCookie = cookieHeaders.some((header) => /;\s*domain=/iu.test(header.value));
+
+  const isolated =
+    cookies.length > 0 &&
+    cookies.every((cookie) => cookie.domain === hostname && cookie.secure && cookie.httpOnly);
+
+  if (parentCookie || !isolated) {
+    throw new Error("Preview session cookies are not host-only and secure");
+  }
 }
 
 /** Follow normal signup, email verification and login; never edit auth rows or mint test sessions. */
@@ -71,6 +95,8 @@ export async function createPreviewVerifiedSession(
   if (!signin.ok()) {
     throw new Error("Preview verified login failed");
   }
+
+  await verifyPreviewSessionCookies(context, signin, urls.api);
 
   const session = await context.request.get(`${urls.api}/api/auth/get-session`, {
     headers: { Origin: urls.frontend },

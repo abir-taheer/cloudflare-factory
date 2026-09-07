@@ -90,6 +90,9 @@ export const loadPreviewCredentials = (local = false) =>
 
         if (
           accountId !== process.env["CLOUDFLARE_ACCOUNT_ID"] ||
+          validated.domains.zoneId !== process.env["CLOUDFLARE_ZONE_ID"] ||
+          validated.domains.zoneName !== process.env["CLOUDFLARE_ZONE_NAME"] ||
+          validated.domains.suffix !== process.env["DOMAIN_SUFFIX"] ||
           previewString(config["ACCOUNT_NAME"]) !==
             previewString(process.env["CLOUDFLARE_ACCOUNT_NAME"])
         ) {

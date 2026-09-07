@@ -14,4 +14,4 @@ export const loadConfigurationValues = (
     }
 
     return values;
-  });
+  }).pipe(Effect.withSpan("platform.configuration.load"));

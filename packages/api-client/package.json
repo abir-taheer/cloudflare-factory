@@ -9,13 +9,21 @@
   },
   "scripts": {
     "generate": "tsx scripts/node-generate.ts",
-    "check:generated": "tsx scripts/node-generate.ts --check",
+    "check:generated": "tsx --test scripts/public-openapi.test.ts && tsx scripts/node-generate.ts --check",
     "check": "tsc --noEmit -p tsconfig.json"
-  },
-  "devDependencies": {
-    "orval": "8.24.0"
   },
   "peerDependencies": {
     "@tanstack/react-query": "5.100.14"
+  },
+  "dependencies": {
+    "@factory/api-contract": "0.0.0",
+    "openapi-fetch": "0.17.0",
+    "openapi-react-query": "0.5.4",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3"
   }
 }

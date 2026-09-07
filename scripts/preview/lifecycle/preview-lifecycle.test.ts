@@ -28,7 +28,7 @@ const credentials: PreviewCredentials = {
   stateBucket: "test-control",
   s3Key: "test",
   s3Secret: "test",
-  workersSubdomain: "test",
+  domains: { zoneId: "c".repeat(32), zoneName: "example.test", suffix: "preview.example.test" },
   sandbox: false,
   sandboxImage: undefined,
 };
@@ -187,15 +187,15 @@ test("binding contract uses isolated resources, public API, and an assets-only f
   const worker = renderPreviewWorkerConfig(manifest, credentials, "workflows", "/tmp/bundle");
   const frontend = renderPreviewWorkerConfig(manifest, credentials, "frontend", "/tmp/bundle");
 
-  assert.equal(api["workers_dev"], true);
+  assert.equal(api["workers_dev"], false);
   assert.equal(worker["workers_dev"], false);
-  assert.equal(frontend["workers_dev"], true);
+  assert.equal(frontend["workers_dev"], false);
   assert.equal(frontend["services"], undefined);
 
   assert.deepEqual(api["vars"], {
     ENVIRONMENT: "preview",
-    API_URL: `https://${previewResource(manifest, "api").name}.test.workers.dev`,
-    FRONTEND_ORIGINS: `https://${previewResource(manifest, "frontend").name}.test.workers.dev`,
+    API_URL: `https://${previewResource(manifest, "api").name}.preview.example.test`,
+    FRONTEND_ORIGINS: `https://${previewResource(manifest, "frontend").name}.preview.example.test`,
     EMAIL_DELIVERY: "capture",
   });
 
@@ -246,4 +246,24 @@ test("R2 inventory terminates on a full final cursor page without losing resourc
   } finally {
     fetchMock.mock.restore();
   }
+});
+
+test("untracked domain attachments prevent deletion of an otherwise owned Worker", async () => {
+  const manifest = manifestFixture();
+
+  for (const resource of manifest.resources) {
+    resource.id = resource.name;
+    resource.phase = "ready";
+  }
+
+  const fixture = lifecycleFixture(manifest);
+
+  fixture.cf.list = () => Effect.succeed([{ service: previewResource(manifest, "api").name }]);
+
+  await assert.rejects(
+    Effect.runPromise(cleanupPreviewEnvironment(manifest, credentials, fixture.cf, fixture.state)),
+  );
+
+  assert.ok(fixture.live.has(previewResource(manifest, "api").name));
+  assert.ok(fixture.live.has(previewResource(manifest, "objects").name));
 });

@@ -1,69 +1,61 @@
-/* eslint-disable node/no-top-level-await -- This ESM-only Node generation entrypoint is never loaded with require. */
-/* eslint-disable import/no-nodejs-modules -- This existing generator is a Node build entrypoint. */
+/* eslint-disable import/no-nodejs-modules -- Node-only OpenAPI artifact generation command. */
+/* eslint-disable node/no-top-level-await -- ESM-only build command. */
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-import { generate } from "orval";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { format, resolveConfig } from "prettier";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import openapiTS, { astToString } from "openapi-typescript";
 import { createApiApplication } from "../../../apps/api/src/http/api-application.js";
 import { apiDocumentConfiguration } from "../../../apps/api/src/http/api-openapi.js";
 
-const jsonIndentation = 2;
+import { PublicOpenApiSchema } from "./public-openapi.js";
 
 const packageRoot = fileURLToPath(new URL("../", import.meta.url));
-const document = createApiApplication().getOpenAPI31Document(apiDocumentConfiguration);
-const documentText = `${JSON.stringify(document, null, jsonIndentation)}\n`;
-const checking = process.argv.includes("--check");
-let outputDirectory = `${packageRoot}src/generated`;
 
-if (checking) {
-  outputDirectory = await mkdtemp(`${packageRoot}src/.generated-check-`);
-}
+const document = PublicOpenApiSchema.parse(
+  createApiApplication().getOpenAPI31Document(apiDocumentConfiguration),
+);
 
-const inputDirectory = await mkdtemp(`${packageRoot}src/.openapi-input-`);
+const documentFormatOptions = await resolveConfig(path.join(packageRoot, "openapi.json"));
+
+const documentText = await format(JSON.stringify(document), {
+  ...documentFormatOptions,
+  parser: "json",
+});
+
+const temporaryDirectory = await mkdtemp(path.join(tmpdir(), "factory-openapi-"));
 
 try {
-  const inputPath = `${inputDirectory}/openapi.json`;
-
+  const inputPath = path.join(temporaryDirectory, "openapi.json");
   await writeFile(inputPath, documentText);
 
-  await generate(
-    {
-      input: { target: inputPath },
-      output: {
-        target: `${outputDirectory}/api.ts`,
-        client: "react-query",
-        httpClient: "fetch",
-        mode: "single",
-        override: {
-          fetch: { includeHttpResponseReturnType: false },
-          mutator: { name: "apiFetch", path: `${packageRoot}src/http.ts` },
-          query: { signal: true },
-        },
-        tsconfig: `${packageRoot}tsconfig.json`,
-      },
-    },
-    packageRoot,
-    { throwOnError: true },
+  const syntax = await openapiTS(pathToFileURL(inputPath));
+  const formatOptions = await resolveConfig(path.join(packageRoot, "src/api-paths.d.ts"));
+  const typeText = await format(astToString(syntax), { ...formatOptions, parser: "typescript" });
+
+  const artifacts = [
+    ["openapi.json", documentText],
+    ["src/api-paths.d.ts", typeText],
+  ] as const;
+
+  await Promise.all(
+    artifacts.map(async ([relativePath, content]) => {
+      const outputPath = path.join(packageRoot, relativePath);
+
+      if (process.argv.includes("--check")) {
+        const recorded = await readFile(outputPath, "utf8");
+
+        if (recorded !== content) {
+          throw new Error(
+            "Generated API client drift: run npm run generate --workspace @factory/api-client",
+          );
+        }
+      } else {
+        await writeFile(outputPath, content);
+      }
+    }),
   );
-
-  if (checking) {
-    const [actual, expected, recordedDocument] = await Promise.all([
-      readFile(`${outputDirectory}/api.ts`, "utf8"),
-      readFile(`${packageRoot}src/generated/api.ts`, "utf8"),
-      readFile(`${packageRoot}openapi.json`, "utf8"),
-    ]);
-
-    if (actual !== expected || documentText !== recordedDocument) {
-      throw new Error(
-        "Generated API client drift: run npm run generate --workspace @factory/api-client",
-      );
-    }
-  } else {
-    await writeFile(`${packageRoot}openapi.json`, documentText);
-  }
 } finally {
-  await rm(inputDirectory, { recursive: true, force: true });
-
-  if (checking) {
-    await rm(outputDirectory, { recursive: true, force: true });
-  }
+  await rm(temporaryDirectory, { recursive: true, force: true });
 }

@@ -28,13 +28,16 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_ACTIONS: "true"
           DEPLOYMENT_ENVIRONMENT: cloudflare-preview
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_ACCOUNT_NAME: ${{ vars.CLOUDFLARE_ACCOUNT_NAME }}
-          DOPPLER_DEPLOY_PROJECT: ${{ vars.DOPPLER_DEPLOY_PROJECT }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_NAME: ${{ secrets.CLOUDFLARE_ACCOUNT_NAME }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_ZONE_NAME: ${{ vars.CLOUDFLARE_ZONE_NAME }}
+          DOMAIN_SUFFIX: ${{ vars.DOMAIN_SUFFIX }}
+          DOPPLER_DEPLOY_PROJECT: ${{ secrets.DOPPLER_DEPLOY_PROJECT }}
         run: >-
           docker compose run --rm --no-deps
           -e DOPPLER_DEPLOY_TOKEN -e GITHUB_TOKEN -e GITHUB_REPOSITORY -e GITHUB_ACTIONS
-          -e DEPLOYMENT_ENVIRONMENT -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME
+          -e DEPLOYMENT_ENVIRONMENT -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME -e CLOUDFLARE_ZONE_ID -e CLOUDFLARE_ZONE_NAME -e DOMAIN_SUFFIX
           -e DOPPLER_DEPLOY_PROJECT
           tools npx tsx scripts/preview/preview-cli.ts reconcile
       - name: Cleanup PostgreSQL branches after Cloudflare resources
@@ -42,11 +45,14 @@ jobs:
         uses: ./.github/actions/cleanup-preview-database
         env:
           DOPPLER_DEPLOY_TOKEN: ${{ secrets.DOPPLER_DEPLOY_TOKEN }}
-          DOPPLER_DEPLOY_PROJECT: ${{ vars.DOPPLER_DEPLOY_PROJECT }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_ACCOUNT_NAME: ${{ vars.CLOUDFLARE_ACCOUNT_NAME }}
-          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
-          NEON_PARENT_BRANCH_ID: ${{ vars.NEON_PARENT_BRANCH_ID }}
+          DOPPLER_DEPLOY_PROJECT: ${{ secrets.DOPPLER_DEPLOY_PROJECT }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_NAME: ${{ secrets.CLOUDFLARE_ACCOUNT_NAME }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_ZONE_NAME: ${{ vars.CLOUDFLARE_ZONE_NAME }}
+          DOMAIN_SUFFIX: ${{ vars.DOMAIN_SUFFIX }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          NEON_PARENT_BRANCH_ID: ${{ secrets.NEON_PARENT_BRANCH_ID }}
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_ACTIONS: "true"

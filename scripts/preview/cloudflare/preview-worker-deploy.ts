@@ -1,3 +1,4 @@
+import { deployPreviewDomains } from "../domains/preview-domain-deploy.ts";
 import { writeFile } from "node:fs/promises";
 import nodePath from "node:path";
 import { Effect } from "effect";
@@ -105,6 +106,7 @@ export function deployPreviewWorkers(deployment: PreviewWorkerDeployment) {
       }
     }
 
+    yield* deployPreviewDomains(manifest, credentials, cf, state, revision);
     return yield* Effect.void;
   });
 }

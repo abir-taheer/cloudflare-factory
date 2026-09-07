@@ -37,7 +37,7 @@ Set `DATABASE_URL` explicitly to the intended isolated database before migration
 
 - `DATABASE_URL`, `REDIS_URL`
 - `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET`
-- `SMTP_HOST`, numeric `SMTP_PORT`; optional `smtpSecure` and `smtpAuth`
+- `SMTP_HOST`, numeric `SMTP_PORT`; optional `SMTP_SECURE` and `SMTP_REQUIRE_TLS` (`true`/`false`, default `false`), plus paired `SMTP_USERNAME`/`SMTP_PASSWORD`. Credentials require at least one TLS flag. Use secure TLS on 465 or required STARTTLS on 587. Certificate verification remains enabled; a failed upgrade never falls back to plaintext authentication.
 - `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`, `TEMPORAL_TASK_QUEUE`
 - `PLATFORM_NAMESPACE` and the registered `workflowType`
 
@@ -51,10 +51,24 @@ The job validates cached notes at `note/${encodeURIComponent(ownerUserId)}/${not
 
 Redis queue consumers use stream groups: `ensureRedisQueueGroup`, `consumeRedisJobs`, and `reclaimRedisJobs`. Acknowledgment follows successful downstream processing or durable acceptance; failures remain pending for recovery. Streams are not automatically trimmed. Temporal uses the job ID as workflow ID and accepts only its known already-started error as a duplicate. Workflow start confirms acceptance, not job completion.
 
-Object reads buffer modest artifacts; missing objects return null. KV is eventually consistent, with a minimum 60-second cache TTL. SMTP and Cloudflare email acceptance do not guarantee delivery. Sandbox adapters call the real Cloudflare SDK or a separately isolated HTTP executor; command execution never runs inside the application host.
+Object reads buffer modest artifacts; missing objects return null. KV is eventually consistent, with a minimum 60-second cache TTL. SMTP and Cloudflare email acceptance do not guarantee delivery. Sandbox adapters call the real Cloudflare SDK or the trusted Docker HTTP executor; command execution never runs inside the application host.
+
+## Managed sandbox
+
+`@factory/platform/managed-sandbox` exports a separate `ManagedSandbox` service, schemas and provider interface. `open({ttlMs})` requires an Effect scope and returns an opaque UUID plus `execute`, `readFile` and `writeFile`. File requests use workspace-relative paths and one-MiB byte limits. Persist IDs only, never session handles. Commands can modify their own sandbox workspace.
+
+`@factory/platform/cloudflare-managed-sandbox` supplies the real SDK RPC adapter. Configure an exclusive private namespace. Scope release destroys only the acquired UUID; `destroy(id)` supports recovery within that namespace. Cleanup failures fail scope closure. The live scope enforces TTL, while Cloudflare's one-minute idle sleep is a separate safeguard, not a durable lifetime guarantee. Process termination is confirmed only when destroy succeeds; command timeout or cancellation alone does not confirm termination. A terminated host may require explicit recovery cleanup.
+
+Explicit destroy closes retained sessions in the same service instance. Cross-host recovery assumes the original owner is no longer running; there is no distributed fencing.
+
+The trusted Docker HTTP executor remains execute-only, with shared identity and storage. It does not implement managed lifecycle or file APIs. No E2B, Daytona or Modal implementation is claimed. Cloudflare managed lifecycle is unverified live until an authorized, eligible isolated deployment runs the probe; local emulators are forbidden.
+
+The private `src/adapters/probes/cloudflare-sandbox-probe.ts` exports `runCloudflareSandboxProbe(binding, namespace)`. An authorized deployed controller can run that Effect directly, without a public route. It starts UUID-owned resources, checks command/file behavior and cleanup after success, failure and interruption, then removes its observer containers. Do not invoke it until account eligibility and cost authorization are confirmed.
 
 ## Verification
 
 Run installs and checks only in Docker, with one dependency installer at a time. Integration flags are `PLATFORM_INTEGRATION`, `PLATFORM_STORAGE_INTEGRATION`, and `PLATFORM_WORKFLOW_INTEGRATION`. Use a freshly migrated, uniquely named test database and a workflow host configured for that same database and an isolated task queue. Preserve existing databases.
 
 Real-service tests cover PostgreSQL ownership, scoped Hyperdrive clients against PostgreSQL, migration replay, Redis leases/cache/pending recovery, S3 artifacts, SMTP acceptance, and Temporal completion/replay. Local compilation and PostgreSQL tests do not prove deployed Cloudflare behavior. Worker runtime validation requires an actual Cloudflare deployment; never use local Worker emulators or remote bindings.
+
+`PLATFORM_SMTP_INTEGRATION=1` additionally requires authenticated test servers in `SMTP_STARTTLS_HOST` and `SMTP_TLS_HOST`, with their CA trusted through `NODE_EXTRA_CA_CERTS`. `PLATFORM_EXECUTOR_INTEGRATION=1` uses `EXECUTOR_URL` and `EXECUTOR_TOKEN` for a trusted Docker executor. The local scope test proves Effect cleanup/deadline handling against real filesystem operations, not Cloudflare lifecycle.

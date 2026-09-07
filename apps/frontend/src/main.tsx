@@ -1,9 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "react-router-dom";
-import { configureApiClient } from "@factory/api-client/http";
-import { createAppQueryClient } from "./lib/query-client.js";
+import { ApplicationProviders } from "./components/application-providers.js";
 import { loadFrontendConfiguration } from "./lib/runtime-configuration.js";
 import { installChunkRecovery } from "./lib/chunk-recovery.js";
 import { RouteErrorPage } from "./components/route-error-page.js";
@@ -19,20 +17,23 @@ installChunkRecovery();
 
 async function bootstrapFrontend() {
   try {
-    const configuration = await loadFrontendConfiguration();
-    configureApiClient(configuration.API_URL);
+    await loadFrontendConfiguration();
 
     const { router } = await import("./app.js");
 
     root.render(
       <StrictMode>
-        <QueryClientProvider client={createAppQueryClient()}>
+        <ApplicationProviders>
           <RouterProvider router={router} />
-        </QueryClientProvider>
+        </ApplicationProviders>
       </StrictMode>,
     );
   } catch {
-    root.render(<RouteErrorPage />);
+    root.render(
+      <ApplicationProviders>
+        <RouteErrorPage />
+      </ApplicationProviders>,
+    );
   }
 }
 

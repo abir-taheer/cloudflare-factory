@@ -13,6 +13,7 @@ const decodeSandboxResultSchema = makePlatformDecoder(SandboxResultSchema);
 
 interface SandboxExecutionOptions {
   timeout: number;
+  signal: AbortSignal;
 }
 
 interface CloudflareSandboxHandle {
@@ -43,13 +44,13 @@ export const unavailableSandboxLayer = Layer.succeed(
   }),
 );
 
-/** HTTP executor must isolate commands; endpoint is trusted configuration and redirects are rejected. */
+/** Trusted HTTP execution shares identity/storage; cancellation aborts the request, not a confirmed kill. */
 export const httpSandboxLayer = (endpoint: string, bearerToken: string) =>
   Layer.succeed(
     Sandbox,
     Sandbox.of({
       execute: (request) =>
-        capabilityOperation("sandbox", "execute", async () => {
+        capabilityOperation("sandbox", "execute", async (signal) => {
           validateSandboxRequest(request);
 
           if (!bearerToken) {
@@ -61,7 +62,7 @@ export const httpSandboxLayer = (endpoint: string, bearerToken: string) =>
             redirect: "error",
             headers: { authorization: `Bearer ${bearerToken}`, "content-type": "application/json" },
             body: JSON.stringify(request),
-            signal: AbortSignal.timeout(request.timeoutMs),
+            signal: AbortSignal.any([signal, AbortSignal.timeout(request.timeoutMs)]),
           });
 
           if (!response.ok) {
@@ -86,10 +87,14 @@ export const cloudflareSandboxLayer = (sandbox: CloudflareSandboxHandle) =>
     Sandbox,
     Sandbox.of({
       execute: (request) =>
-        capabilityOperation("sandbox", "execute", async () => {
+        capabilityOperation("sandbox", "execute", async (signal) => {
           validateSandboxRequest(request);
 
-          const result = await sandbox.exec(request.command, { timeout: request.timeoutMs });
+          const result = await sandbox.exec(request.command, {
+            timeout: request.timeoutMs,
+            signal,
+          });
+
           return decodeSandboxResultSchema(result);
         }),
     }),

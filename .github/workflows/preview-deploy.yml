@@ -41,11 +41,14 @@ jobs:
           output-file: ${{ runner.temp }}/database-handoff/handoff.json
         env:
           DOPPLER_DEPLOY_TOKEN: ${{ secrets.DOPPLER_DEPLOY_TOKEN }}
-          DOPPLER_DEPLOY_PROJECT: ${{ vars.DOPPLER_DEPLOY_PROJECT }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_ACCOUNT_NAME: ${{ vars.CLOUDFLARE_ACCOUNT_NAME }}
-          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
-          NEON_PARENT_BRANCH_ID: ${{ vars.NEON_PARENT_BRANCH_ID }}
+          DOPPLER_DEPLOY_PROJECT: ${{ secrets.DOPPLER_DEPLOY_PROJECT }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_NAME: ${{ secrets.CLOUDFLARE_ACCOUNT_NAME }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_ZONE_NAME: ${{ vars.CLOUDFLARE_ZONE_NAME }}
+          DOMAIN_SUFFIX: ${{ vars.DOMAIN_SUFFIX }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          NEON_PARENT_BRANCH_ID: ${{ secrets.NEON_PARENT_BRANCH_ID }}
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_ACTIONS: "true"
@@ -54,27 +57,30 @@ jobs:
       - name: Provision, deploy, and verify
         env:
           DOPPLER_API_TOKEN: ${{ secrets.DOPPLER_API_TOKEN }}
-          DOPPLER_API_PROJECT: ${{ vars.DOPPLER_API_PROJECT }}
+          DOPPLER_API_PROJECT: ${{ secrets.DOPPLER_API_PROJECT }}
           DOPPLER_FRONTEND_TOKEN: ${{ secrets.DOPPLER_FRONTEND_TOKEN }}
-          DOPPLER_FRONTEND_PROJECT: ${{ vars.DOPPLER_FRONTEND_PROJECT }}
+          DOPPLER_FRONTEND_PROJECT: ${{ secrets.DOPPLER_FRONTEND_PROJECT }}
           DOPPLER_WORKFLOWS_TOKEN: ${{ secrets.DOPPLER_WORKFLOWS_TOKEN }}
-          DOPPLER_WORKFLOWS_PROJECT: ${{ vars.DOPPLER_WORKFLOWS_PROJECT }}
+          DOPPLER_WORKFLOWS_PROJECT: ${{ secrets.DOPPLER_WORKFLOWS_PROJECT }}
           DOPPLER_DEPLOY_TOKEN: ${{ secrets.DOPPLER_DEPLOY_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_ACTIONS: "true"
           DEPLOYMENT_ENVIRONMENT: cloudflare-preview
           RUN_ID: ${{ github.event.workflow_run.id }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_ACCOUNT_NAME: ${{ vars.CLOUDFLARE_ACCOUNT_NAME }}
-          DOPPLER_DEPLOY_PROJECT: ${{ vars.DOPPLER_DEPLOY_PROJECT }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_NAME: ${{ secrets.CLOUDFLARE_ACCOUNT_NAME }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_ZONE_NAME: ${{ vars.CLOUDFLARE_ZONE_NAME }}
+          DOMAIN_SUFFIX: ${{ vars.DOMAIN_SUFFIX }}
+          DOPPLER_DEPLOY_PROJECT: ${{ secrets.DOPPLER_DEPLOY_PROJECT }}
         run: >-
           docker compose run --rm --no-deps
           -e DOPPLER_API_TOKEN -e DOPPLER_API_PROJECT
           -e DOPPLER_FRONTEND_TOKEN -e DOPPLER_FRONTEND_PROJECT
           -e DOPPLER_WORKFLOWS_TOKEN -e DOPPLER_WORKFLOWS_PROJECT
           -e DOPPLER_DEPLOY_TOKEN -e GITHUB_TOKEN -e GITHUB_REPOSITORY -e GITHUB_ACTIONS
-          -e DEPLOYMENT_ENVIRONMENT -e RUN_ID -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME
+          -e DEPLOYMENT_ENVIRONMENT -e RUN_ID -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_ACCOUNT_NAME -e CLOUDFLARE_ZONE_ID -e CLOUDFLARE_ZONE_NAME -e DOMAIN_SUFFIX
           -e DOPPLER_DEPLOY_PROJECT
           -v "${{ runner.temp }}/database-handoff:/database-output:ro"
           -e DATABASE_OUTPUT_FILE=/database-output/handoff.json

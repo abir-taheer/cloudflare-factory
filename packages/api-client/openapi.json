@@ -1,0 +1,398 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Factory API", "version": "0.1.0" },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "operationId": "getHealth",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "API process health",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiHealth" } }
+            }
+          }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "operationId": "getApiReadiness",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Database schema reachable and queue configured",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiReadiness" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "403": {
+            "description": "Origin not allowed",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "404": {
+            "description": "Service or provider unavailable",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "503": {
+            "description": "Service or provider unavailable",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notes": {
+      "post": {
+        "operationId": "createNote",
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "description": "Note content",
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CreateNote" } }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created note",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiNote" } }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "403": {
+            "description": "Origin not allowed",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "404": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "413": {
+            "description": "Request body too large",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "415": {
+            "description": "JSON required",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "503": {
+            "description": "Service or provider unavailable",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notes/{id}": {
+      "get": {
+        "operationId": "getNote",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [
+          {
+            "schema": { "$ref": "#/components/schemas/ApiId" },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stored note",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiNote" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "403": {
+            "description": "Origin not allowed",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "503": {
+            "description": "Service or provider unavailable",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs": {
+      "post": {
+        "operationId": "createJob",
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "description": "Note to process",
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CreateJob" } }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted job",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AcceptedJob" } }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "403": {
+            "description": "Origin not allowed",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "404": {
+            "description": "Note not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "413": {
+            "description": "Request body too large",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "415": {
+            "description": "JSON required",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "503": {
+            "description": "Service or provider unavailable",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{id}": {
+      "get": {
+        "operationId": "getJob",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [
+          {
+            "schema": { "$ref": "#/components/schemas/ApiId" },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed job",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/CompletedJob" } }
+            }
+          },
+          "202": {
+            "description": "Job pending",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/PendingJob" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "403": {
+            "description": "Origin not allowed",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          },
+          "503": {
+            "description": "Service or provider unavailable",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiHealth": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "enum": ["ok"] },
+          "environment": { "type": "string", "enum": ["dev", "preview", "prod"] }
+        },
+        "required": ["status", "environment"]
+      },
+      "ApiReadiness": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "enum": ["ready"] },
+          "queue": { "type": "string", "enum": ["configured"] }
+        },
+        "required": ["status", "queue"]
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "code": { "type": "string" },
+          "requestId": { "type": "string" },
+          "retryable": { "type": "boolean" }
+        },
+        "required": ["error", "code", "requestId", "retryable"]
+      },
+      "ApiNote": {
+        "type": "object",
+        "properties": {
+          "id": { "$ref": "#/components/schemas/ApiId" },
+          "text": { "type": "string" },
+          "content": { "type": "string" },
+          "createdAt": { "type": "string" }
+        },
+        "required": ["id", "text", "content", "createdAt"]
+      },
+      "ApiId": {
+        "type": "string",
+        "pattern": "^[a-f\\d]{8}-[a-f\\d]{4}-[a-f\\d]{4}-[a-f\\d]{4}-[a-f\\d]{12}$/u"
+      },
+      "CreateNote": {
+        "type": "object",
+        "properties": { "content": { "type": "string", "maxLength": 4000 } },
+        "required": ["content"]
+      },
+      "AcceptedJob": {
+        "type": "object",
+        "properties": {
+          "id": { "$ref": "#/components/schemas/ApiId" },
+          "noteId": { "$ref": "#/components/schemas/ApiId" },
+          "status": { "type": "string", "enum": ["pending"] }
+        },
+        "required": ["id", "noteId", "status"]
+      },
+      "CreateJob": {
+        "type": "object",
+        "properties": { "noteId": { "$ref": "#/components/schemas/ApiId" } },
+        "required": ["noteId"]
+      },
+      "CompletedJob": {
+        "type": "object",
+        "properties": {
+          "id": { "$ref": "#/components/schemas/ApiId" },
+          "noteId": { "$ref": "#/components/schemas/ApiId" },
+          "status": { "type": "string", "enum": ["completed"] },
+          "content": { "type": "string" }
+        },
+        "required": ["id", "noteId", "status", "content"]
+      },
+      "PendingJob": {
+        "type": "object",
+        "properties": {
+          "id": { "$ref": "#/components/schemas/ApiId" },
+          "status": { "type": "string", "enum": ["pending"] }
+        },
+        "required": ["id", "status"]
+      }
+    },
+    "securitySchemes": {
+      "sessionCookie": { "type": "apiKey", "in": "cookie", "name": "better-auth.session_token" }
+    },
+    "parameters": {}
+  },
+  "webhooks": {}
+}

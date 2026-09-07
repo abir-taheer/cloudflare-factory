@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/node-executor.ts",
-    "start": "node --import tsx dist/node-executor.js",
+    "start": "node dist/node-executor.mjs",
     "lint": "oxlint --type-aware --type-check --deny-warnings src",
     "build": "npm run build:node",
-    "build:node": "esbuild src/node-executor.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/node-executor.js",
+    "build:node": "tsx ../../scripts/build/build-node-cli.ts executor",
     "test": "tsx --test src/*.test.ts"
   },
   "dependencies": {

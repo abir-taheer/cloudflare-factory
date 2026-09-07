@@ -43,10 +43,12 @@ export const AcceptedJobSchema = z
 export const PendingJobSchema = AcceptedJobSchema.omit({ noteId: true }).openapi("PendingJob");
 
 /** Completed workflow result exposes the transformed content. */
-export const CompletedJobSchema = AcceptedJobSchema.extend({
-  status: z.literal("completed"),
-  content: z.string(),
-}).openapi("CompletedJob");
+export const CompletedJobSchema = AcceptedJobSchema.omit({ status: true })
+  .extend({
+    status: z.literal("completed"),
+    content: z.string(),
+  })
+  .openapi("CompletedJob");
 
 /** Health exposes only the deployment category, never provider configuration. */
 export const ApiHealthSchema = z

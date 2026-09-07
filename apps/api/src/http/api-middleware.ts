@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import type { MiddlewareHandler } from "hono";
+import { cors } from "hono/cors";
 import { ApiAuthentication } from "./api-authentication.js";
 import type { ApiHonoEnvironment } from "./api-context.js";
 import { apiErrorBody, apiHttpStatus } from "./api-errors.js";
@@ -11,20 +12,21 @@ const supportedApiHeaders = ["authorization", "content-type"];
 /** Security headers apply to success, errors, auth and preflight responses alike. */
 export const apiSecurityMiddleware: MiddlewareHandler<ApiHonoEnvironment> = async (
   context,
-  next,
+  proceed,
 ) => {
   context.set("requestId", crypto.randomUUID());
+
+  await proceed();
+
   context.header("x-request-id", context.get("requestId"));
   context.header("cache-control", "no-store");
   context.header("x-content-type-options", "nosniff");
   context.header("referrer-policy", "no-referrer");
-  return next();
 };
 
 /** Exact origins permit credentialed browser calls; preflight never requires a session. */
 export const apiCorsMiddleware: MiddlewareHandler<ApiHonoEnvironment> = async (context, next) => {
   const origin = context.req.header("origin");
-  context.header("vary", "Origin");
 
   if (origin !== undefined) {
     const isAllowedOrigin = context.env.configuration.frontendOrigins.includes(origin);
@@ -35,10 +37,6 @@ export const apiCorsMiddleware: MiddlewareHandler<ApiHonoEnvironment> = async (c
         apiHttpStatus.forbidden,
       );
     }
-
-    context.header("access-control-allow-origin", origin);
-    context.header("access-control-allow-credentials", "true");
-    context.header("access-control-expose-headers", "x-request-id");
   }
 
   if (context.req.method === "OPTIONS") {
@@ -61,14 +59,17 @@ export const apiCorsMiddleware: MiddlewareHandler<ApiHonoEnvironment> = async (c
         apiHttpStatus.forbidden,
       );
     }
-
-    context.header("access-control-allow-methods", supportedApiMethods.join(", "));
-    context.header("access-control-allow-headers", supportedApiHeaders.join(", "));
-    context.header("vary", "Origin, Access-Control-Request-Method, Access-Control-Request-Headers");
-    return context.body(null, apiHttpStatus.noContent);
   }
 
-  return next();
+  const credentialedCors = cors({
+    origin: [...context.env.configuration.frontendOrigins],
+    credentials: true,
+    allowMethods: supportedApiMethods,
+    allowHeaders: supportedApiHeaders,
+    exposeHeaders: ["x-request-id"],
+  });
+
+  return credentialedCors(context, next);
 };
 
 /** Only verified session identity reaches owner-scoped business operations. */

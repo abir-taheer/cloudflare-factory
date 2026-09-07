@@ -1,7 +1,11 @@
-import { ConfigProvider, Effect } from "effect";
+import { type ConfigProvider, Effect } from "effect";
 import { z } from "zod";
-import type { PortablePlatformConfig } from "@factory/platform/portable";
 import { loadConfigurationValues } from "./configuration-values.js";
+import {
+  SmtpEnvironmentSchema,
+  SmtpSecuritySchema,
+  smtpEnvironmentOptions,
+} from "./smtp-configuration.js";
 
 const maximumNetworkPort = 65_535;
 const NonemptySettingSchema = z.string().regex(/^\S+$/u);
@@ -63,6 +67,26 @@ const PortableEnvironmentSchema = z.object({
   PLATFORM_NAMESPACE: NonemptySettingSchema,
 });
 
+/** Portable provider inputs share the same schema as environment decoding. */
+export const PortablePlatformConfigSchema = SmtpSecuritySchema.safeExtend({
+  databaseUrl: PortableEnvironmentSchema.shape.DATABASE_URL,
+  redisUrl: PortableEnvironmentSchema.shape.REDIS_URL,
+  s3Endpoint: PortableEnvironmentSchema.shape.S3_ENDPOINT,
+  s3AccessKeyId: PortableEnvironmentSchema.shape.S3_ACCESS_KEY_ID,
+  s3SecretAccessKey: PortableEnvironmentSchema.shape.S3_SECRET_ACCESS_KEY,
+  s3Bucket: PortableEnvironmentSchema.shape.S3_BUCKET,
+  smtpHost: PortableEnvironmentSchema.shape.SMTP_HOST,
+  smtpPort: z.number().int().min(1).max(maximumNetworkPort),
+  temporalAddress: PortableEnvironmentSchema.shape.TEMPORAL_ADDRESS,
+  temporalNamespace: PortableEnvironmentSchema.shape.TEMPORAL_NAMESPACE.optional(),
+  taskQueue: PortableEnvironmentSchema.shape.TEMPORAL_TASK_QUEUE,
+  namespace: PortableEnvironmentSchema.shape.PLATFORM_NAMESPACE,
+  workflowType: NonemptySettingSchema,
+});
+
+/** Provider configuration contains secrets and must never be logged. */
+export type PortablePlatformConfig = z.infer<typeof PortablePlatformConfigSchema>;
+
 const invalidPortableConfiguration = () =>
   new Error(
     "Invalid portable environment: require dev/preview/prod, provider URLs and credentials, SMTP_HOST/SMTP_PORT (1-65535), TEMPORAL_ADDRESS (host:port), TEMPORAL_NAMESPACE, TEMPORAL_TASK_QUEUE and PLATFORM_NAMESPACE",
@@ -71,14 +95,15 @@ const invalidPortableConfiguration = () =>
 /** Zod validates provider settings from the supplied ConfigProvider before any connection opens. */
 export const parsePortableConfiguration = (provider: ConfigProvider.ConfigProvider) =>
   Effect.gen(function* () {
-    const values = yield* loadConfigurationValues(
-      provider,
-      Object.keys(PortableEnvironmentSchema.shape),
-    );
+    const values = yield* loadConfigurationValues(provider, [
+      ...Object.keys(PortableEnvironmentSchema.shape),
+      ...Object.keys(SmtpEnvironmentSchema.shape),
+    ]);
 
     const parsed = PortableEnvironmentSchema.safeParse(values);
+    const smtp = SmtpEnvironmentSchema.safeParse(values);
 
-    if (!parsed.success) {
+    if (!parsed.success || !smtp.success) {
       return yield* Effect.fail(invalidPortableConfiguration());
     }
 
@@ -93,6 +118,7 @@ export const parsePortableConfiguration = (provider: ConfigProvider.ConfigProvid
       s3Bucket: value.S3_BUCKET,
       smtpHost: value.SMTP_HOST,
       smtpPort: value.SMTP_PORT,
+      ...smtpEnvironmentOptions(smtp.data),
       temporalAddress: value.TEMPORAL_ADDRESS,
       temporalNamespace: value.TEMPORAL_NAMESPACE,
       taskQueue: value.TEMPORAL_TASK_QUEUE,
@@ -101,8 +127,7 @@ export const parsePortableConfiguration = (provider: ConfigProvider.ConfigProvid
     };
 
     return configuration;
-  }).pipe(Effect.mapError(() => invalidPortableConfiguration()));
-
-/** API and workflow startup share validated provider configuration without endpoint defaults. */
-export const readPortableConfiguration = (): PortablePlatformConfig =>
-  Effect.runSync(parsePortableConfiguration(ConfigProvider.fromEnv()));
+  }).pipe(
+    Effect.mapError(() => invalidPortableConfiguration()),
+    Effect.withSpan("platform.configuration.parse"),
+  );

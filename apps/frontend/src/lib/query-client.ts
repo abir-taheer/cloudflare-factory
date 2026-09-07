@@ -1,5 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
-import { shouldRetryApiRequest } from "./api-client.js";
+import { ApiClientError } from "@factory/api-client/http";
+
+const maximumQueryRetries = 2;
 
 const initialRetryDelayMs = 1000;
 const retryBackoffFactor = 2;
@@ -11,7 +13,8 @@ export function createAppQueryClient(): QueryClient {
     defaultOptions: {
       queries: {
         refetchOnWindowFocus: false,
-        retry: shouldRetryApiRequest,
+        retry: (count, error) =>
+          count < maximumQueryRetries && error instanceof ApiClientError && error.retryable,
         retryDelay: (attempt) =>
           Math.min(initialRetryDelayMs * retryBackoffFactor ** attempt, maximumRetryDelayMs),
         staleTime: 30_000,

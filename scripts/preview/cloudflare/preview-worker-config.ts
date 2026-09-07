@@ -1,3 +1,4 @@
+import { planPreviewDomains } from "../domains/preview-domain-ownership.ts";
 import { Effect } from "effect";
 import { loadDeploymentRuntime } from "../../shared/deployment-doppler.ts";
 import nodePath from "node:path";
@@ -5,11 +6,13 @@ import { previewResource, previewString } from "../preview-model.ts";
 import type { PreviewManifest } from "../preview-model.ts";
 import type { PreviewCredentials } from "./preview-cloudflare.ts";
 
-/** Public origins derive only from owned resource names and an independently verified account subdomain. */
+/** Public origins derive only from owned resource names and an independently verified zone suffix. */
 export function previewPublicUrls(manifest: PreviewManifest, credentials: PreviewCredentials) {
+  planPreviewDomains(manifest, credentials.domains);
+
   return {
-    api: `https://${previewResource(manifest, "api").name}.${credentials.workersSubdomain}.workers.dev`,
-    frontend: `https://${previewResource(manifest, "frontend").name}.${credentials.workersSubdomain}.workers.dev`,
+    api: `https://${previewResource(manifest, "api").name}.${credentials.domains.suffix}`,
+    frontend: `https://${previewResource(manifest, "frontend").name}.${credentials.domains.suffix}`,
   };
 }
 
@@ -72,7 +75,7 @@ export function renderPreviewWorkerConfig(
     compatibility_date: "2026-09-01",
     compatibility_flags: ["nodejs_compat"],
     no_bundle: true,
-    workers_dev: app !== "workflows",
+    workers_dev: false,
     preview_urls: false,
     vars: {
       ENVIRONMENT: "preview",

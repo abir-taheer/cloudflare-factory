@@ -13,10 +13,10 @@
   },
   "scripts": {
     "dev": "tsx watch src/node-workflows.ts",
-    "start": "node --import tsx dist/node-workflows.js",
+    "start": "node dist/node-workflows.mjs",
     "lint": "oxlint --type-aware --type-check --deny-warnings src",
     "build": "npm run build:node",
-    "build:node": "esbuild src/node-workflows.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/node-workflows.js && cp src/temporal-workflow.ts dist/temporal-workflow.ts",
+    "build:node": "tsx ../../scripts/build/build-node-cli.ts workflows",
     "test": "npm run test:integration",
     "test:integration": "playwright test --config=../../playwright.config.ts --grep \"^real note storage\"",
     "build:worker": "tsx ../../scripts/build/build-worker.ts src/cloudflare-workflows.ts dist/cloudflare-workflows.mjs"

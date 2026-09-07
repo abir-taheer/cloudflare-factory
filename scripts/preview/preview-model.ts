@@ -2,6 +2,7 @@ import { createHash, createHmac } from "node:crypto";
 import { DatabaseIdentitySchema } from "../shared/database/database-schema.ts";
 import { Data, Effect } from "effect";
 import { z } from "zod";
+import { PreviewDomainStateSchema } from "./domains/preview-domain-model.ts";
 import { readPreviewResourcePrefix } from "./preview-configuration.ts";
 
 const resourceScopeLength = 16;
@@ -80,6 +81,7 @@ export const PreviewManifestSchema = z.object({
   sandbox: z.boolean(),
   database: DatabaseIdentitySchema.nullable(),
   resources: z.array(PreviewResourceSchema),
+  domains: z.array(PreviewDomainStateSchema).optional(),
 });
 
 /** Trusted callers retain the same ownership contract as persisted state. */

@@ -16,10 +16,10 @@
   },
   "scripts": {
     "dev": "tsx watch src/node-api.ts",
-    "start": "node --import tsx dist/node-api.js",
+    "start": "node dist/node-api.mjs",
     "lint": "oxlint --type-aware --type-check --deny-warnings src",
     "build": "npm run build:node",
-    "build:node": "esbuild src/node-api.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/node-api.js",
+    "build:node": "tsx ../../scripts/build/build-node-cli.ts api",
     "test": "tsx --test src/*.test.ts",
     "test:integration": "playwright test --config=../../playwright.config.ts --grep \"all authenticated|invalid note\"",
     "build:worker": "tsx ../../scripts/build/build-worker.ts src/cloudflare-api.ts dist/cloudflare-api.mjs"

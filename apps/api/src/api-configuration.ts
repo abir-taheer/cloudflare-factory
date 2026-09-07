@@ -1,7 +1,7 @@
 import { ConfigProvider, Effect } from "effect";
 import { z } from "zod";
 import { AuthenticationConfigurationSchema } from "@factory/auth/configuration";
-import { loadConfigurationValues } from "./configuration-values.js";
+import { loadConfigurationValues } from "@factory/platform/configuration";
 
 /** API runtime configuration extends the shared authentication contract without duplicate fields. */
 export const ApiConfigurationSchema = AuthenticationConfigurationSchema.extend({

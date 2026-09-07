@@ -1,55 +1,27 @@
 import { Effect } from "effect";
 import type { MiddlewareHandler } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import type { ApiHonoEnvironment } from "./api-context.js";
 import { apiErrorBody, apiHttpStatus } from "./api-errors.js";
 import { runApiEffect } from "./run-route-effect.js";
 
 const maximumApiBodyBytes = 16_384;
 
-const readBoundedApiBody = (request: Request) =>
-  Effect.gen(function* () {
-    const reader = request.body?.getReader();
-
-    if (!reader) {
-      return "";
-    }
-
-    const chunks: Uint8Array[] = [];
-    let size = 0;
-
-    for (;;) {
-      const chunk = yield* Effect.tryPromise(() => reader.read());
-
-      if (chunk.done) {
-        break;
-      }
-
-      if (!(chunk.value instanceof Uint8Array)) {
-        return null;
-      }
-
-      size += chunk.value.byteLength;
-
-      if (size > maximumApiBodyBytes) {
-        yield* Effect.tryPromise(() => reader.cancel());
-        return null;
-      }
-
-      chunks.push(chunk.value);
-    }
-
-    const bytes = new Uint8Array(size);
-    let offset = 0;
-
-    for (const chunk of chunks) {
-      bytes.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-
-    return new TextDecoder().decode(bytes);
+/** Bound every API body before parsing; Hono preserves the stream for Better Auth and validators. */
+export const apiBodyLimitMiddleware: MiddlewareHandler<ApiHonoEnvironment> = (context, next) => {
+  const limitRequestBody = bodyLimit({
+    maxSize: maximumApiBodyBytes,
+    onError: () =>
+      context.json(
+        apiErrorBody(context, "Request body too large", "BODY_TOO_LARGE"),
+        apiHttpStatus.payloadTooLarge,
+      ),
   });
 
-/** Stream bytes are bounded before Hono parses JSON, including requests without content length. */
+  return limitRequestBody(context, next);
+};
+
+/** Business routes require JSON; Hono caches the bounded parse for the route's Zod validator. */
 export const apiRequestBodyMiddleware: MiddlewareHandler<ApiHonoEnvironment> = async (
   context,
   next,
@@ -58,7 +30,9 @@ export const apiRequestBodyMiddleware: MiddlewareHandler<ApiHonoEnvironment> = a
     return next();
   }
 
-  const isJsonRequest = context.req.header("content-type")?.startsWith("application/json") === true;
+  const contentType = context.req.header("content-type") ?? "";
+  const mediaType = contentType.split(";")[0]?.trim().toLowerCase();
+  const isJsonRequest = mediaType === "application/json";
 
   if (!isJsonRequest) {
     return context.json(
@@ -67,23 +41,17 @@ export const apiRequestBodyMiddleware: MiddlewareHandler<ApiHonoEnvironment> = a
     );
   }
 
-  const body = await runApiEffect(
+  const parsed = await runApiEffect(
     context,
-    readBoundedApiBody(context.req.raw).pipe(Effect.catch(() => Effect.succeed(null))),
+    Effect.tryPromise(() => context.req.json<unknown>()).pipe(Effect.result),
   );
 
-  if (body === null) {
+  if (parsed._tag === "Failure") {
     return context.json(
-      apiErrorBody(context, "Request body too large", "BODY_TOO_LARGE"),
-      apiHttpStatus.payloadTooLarge,
+      apiErrorBody(context, "Invalid JSON", "INVALID_JSON"),
+      apiHttpStatus.badRequest,
     );
   }
 
-  // Hono's public cache lets route validators reuse the bounded parse without rereading the stream.
-  const parsed = Effect.try((): unknown => JSON.parse(body)).pipe(
-    Effect.catch(() => Effect.succeed(null)),
-  );
-
-  context.req.bodyCache.json = runApiEffect(context, parsed);
   return next();
 };

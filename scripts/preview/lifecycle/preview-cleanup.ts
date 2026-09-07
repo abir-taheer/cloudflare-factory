@@ -1,3 +1,4 @@
+import { cleanupPreviewDomains } from "../domains/preview-domain-cleanup.ts";
 import { Effect } from "effect";
 import { PreviewFailure, previewResource } from "../preview-model.ts";
 import type { PreviewManifest, PreviewResource } from "../preview-model.ts";
@@ -58,7 +59,7 @@ export const deletePreviewResource = (
 /** Remove ingress and writers before storage; keep the manifest until every absence check passes. */
 export const cleanupPreviewEnvironment = (
   manifest: PreviewManifest,
-  _credentials: PreviewCredentials,
+  credentials: PreviewCredentials,
   cf: PreviewCloudflare,
   state: PreviewStateStore,
 ) =>
@@ -70,7 +71,9 @@ export const cleanupPreviewEnvironment = (
     manifest.status = "deleting";
     yield* state.save(manifest);
 
-    // Stop public reachability even if a later delete fails. No custom routes or DNS are created.
+    yield* cleanupPreviewDomains(manifest, credentials, cf, state);
+
+    // Disable legacy workers.dev ingress before deleting compute.
     for (const suffix of ["frontend", "api"]) {
       const worker = previewResource(manifest, suffix);
       const workerId = yield* cf.lookupResource(worker);
@@ -91,6 +94,24 @@ export const cleanupPreviewEnvironment = (
           previews_enabled: false,
         });
       }
+    }
+
+    const workerNames = new Set(
+      manifest.resources
+        .filter((resource) => resource.kind === "worker")
+        .map((resource) => resource.name),
+    );
+
+    const domainInventory = yield* cf.list("/workers/domains");
+
+    const unknownAttachment = domainInventory.some(
+      (domain) => typeof domain["service"] !== "string" || workerNames.has(domain["service"]),
+    );
+
+    if (unknownAttachment) {
+      return yield* Effect.fail(
+        new PreviewFailure({ operation: "Preview Worker still has unowned domain attachments" }),
+      );
     }
 
     const failures: string[] = [];

@@ -1,61 +1,51 @@
-const tooManyRequestsStatus = 429;
-const badGatewayStatus = 502;
-const unavailableStatus = 503;
-const gatewayTimeoutStatus = 504;
-const unauthorizedStatus = 401;
+import {
+  AcceptedJobSchema,
+  ApiErrorSchema,
+  ApiHealthSchema,
+  ApiNoteSchema,
+  CompletedJobSchema,
+  PendingJobSchema,
+} from "@factory/api-contract/schema";
+import type { Middleware } from "openapi-fetch";
 
-let configuredOrigin: string | null = null;
-
-/** Configure only the validated public API origin; there is no production fallback. */
-export function configureApiClient(origin: string): void {
-  configuredOrigin = new URL(origin).origin;
-}
-
-/** Normalized API failures expose safe HTTP metadata to retry policy and feature UI. */
+/** Public API failures contain only the server's documented safe envelope. */
 export class ApiClientError extends Error {
-  readonly status: number | null;
-  readonly retryable: boolean;
-  constructor(message: string, status: number | null) {
+  constructor(
+    message: string,
+    readonly retryable = false,
+  ) {
     super(message);
     this.name = "ApiClientError";
-    this.status = status;
-
-    this.retryable =
-      status === null ||
-      [tooManyRequestsStatus, badGatewayStatus, unavailableStatus, gatewayTimeoutStatus].includes(
-        status,
-      );
   }
 }
 
-/** Orval hook error type retains the documented API response without leaking transport causes. */
-export type ErrorType<T> = ApiClientError & { readonly body?: T };
+const responseSchemas = {
+  "/healthz": ApiHealthSchema,
+  "/api/v1/notes": ApiNoteSchema,
+  "/api/v1/notes/{id}": ApiNoteSchema,
+  "/api/v1/jobs": AcceptedJobSchema,
+  "/api/v1/jobs/{id}": CompletedJobSchema.or(PendingJobSchema),
+};
 
-/** Generated endpoints own paths/types; transport uses direct credentialed CORS and never redirects. */
-export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  if (configuredOrigin === null) {
-    throw new ApiClientError("API configuration is unavailable", null);
-  }
+/** Validate wire responses with the same canonical schemas used to publish OpenAPI. */
+export const apiResponseValidation: Middleware = {
+  async onResponse({ schemaPath, response }) {
+    const value: unknown = await response.clone().json();
 
-  const url = new URL(path, configuredOrigin);
+    if (!response.ok) {
+      const failure = ApiErrorSchema.safeParse(value);
 
-  if (url.origin !== configuredOrigin) {
-    throw new ApiClientError("API origin mismatch", null);
-  }
+      if (!failure.success) {
+        throw new ApiClientError("The API returned an unexpected error.");
+      }
 
-  const response = await fetch(url, { ...options, credentials: "include", redirect: "error" });
-
-  if (!response.ok) {
-    let message = `API request failed (${response.status}).`;
-
-    if (response.status === unauthorizedStatus) {
-      message = "Please sign in to continue.";
+      throw new ApiClientError(failure.data.error, failure.data.retryable);
     }
 
-    throw new ApiClientError(message, response.status);
-  }
-
-  const data: unknown = await response.json();
-  // eslint-disable-next-line typescript/consistent-type-assertions, typescript/no-unsafe-type-assertion, factory/no-type-casts -- Orval supplies T from the same Zod/OpenAPI contract enforced by the API response boundary.
-  return data as T;
-}
+    for (const [path, schema] of Object.entries(responseSchemas)) {
+      if (path === schemaPath && !schema.safeParse(value).success) {
+        throw new ApiClientError("The API returned an invalid response.");
+      }
+    }
+  },
+};

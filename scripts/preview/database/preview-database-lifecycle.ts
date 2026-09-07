@@ -88,12 +88,13 @@ export const cleanupPreviewDatabase = (
   state: PreviewStateStore,
 ) =>
   Effect.gen(function* () {
-    if (
-      manifest.status !== "deleting" ||
-      manifest.resources.some(
-        (resource) => resource.kind !== "database" && resource.phase !== "deleted",
-      )
-    ) {
+    const domainsRemain = (manifest.domains ?? []).some((domain) => domain.phase !== "deleted");
+
+    const cloudflareResourcesRemain = manifest.resources.some(
+      (resource) => resource.kind !== "database" && resource.phase !== "deleted",
+    );
+
+    if (manifest.status !== "deleting" || domainsRemain || cloudflareResourcesRemain) {
       return yield* Effect.fail(
         new PreviewFailure({
           operation: "Preview database retained until Cloudflare cleanup completes",

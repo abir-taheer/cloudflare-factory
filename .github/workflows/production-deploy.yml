@@ -70,17 +70,17 @@ jobs:
       REPOSITORY: ${{ github.repository }}
       REPOSITORY_ID: ${{ github.repository_id }}
       REVISION: ${{ github.sha }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-      CLOUDFLARE_ACCOUNT_NAME: ${{ vars.CLOUDFLARE_ACCOUNT_NAME }}
-      NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
-      NEON_PARENT_BRANCH_ID: ${{ vars.NEON_PARENT_BRANCH_ID }}
-      DOPPLER_DEPLOY_PROJECT: ${{ vars.DOPPLER_DEPLOY_PROJECT }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_ACCOUNT_NAME: ${{ secrets.CLOUDFLARE_ACCOUNT_NAME }}
+      NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+      NEON_PARENT_BRANCH_ID: ${{ secrets.NEON_PARENT_BRANCH_ID }}
+      DOPPLER_DEPLOY_PROJECT: ${{ secrets.DOPPLER_DEPLOY_PROJECT }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      # Install only trusted main tooling before any secret is passed to a process.
+      # Build trusted main tooling before passing Doppler service tokens.
       - name: Build trusted production controller
         run: docker compose build tools
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -102,11 +102,11 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           DOPPLER_DEPLOY_TOKEN: ${{ secrets.DOPPLER_DEPLOY_TOKEN }}
           DOPPLER_API_TOKEN: ${{ (inputs.app == 'api' || inputs.app == 'all') && secrets.DOPPLER_API_TOKEN || '' }}
-          DOPPLER_API_PROJECT: ${{ vars.DOPPLER_API_PROJECT }}
+          DOPPLER_API_PROJECT: ${{ secrets.DOPPLER_API_PROJECT }}
           DOPPLER_FRONTEND_TOKEN: ${{ (inputs.app == 'frontend' || inputs.app == 'all') && secrets.DOPPLER_FRONTEND_TOKEN || '' }}
-          DOPPLER_FRONTEND_PROJECT: ${{ vars.DOPPLER_FRONTEND_PROJECT }}
+          DOPPLER_FRONTEND_PROJECT: ${{ secrets.DOPPLER_FRONTEND_PROJECT }}
           DOPPLER_WORKFLOWS_TOKEN: ${{ (inputs.app == 'workflows' || inputs.app == 'all') && secrets.DOPPLER_WORKFLOWS_TOKEN || '' }}
-          DOPPLER_WORKFLOWS_PROJECT: ${{ vars.DOPPLER_WORKFLOWS_PROJECT }}
+          DOPPLER_WORKFLOWS_PROJECT: ${{ secrets.DOPPLER_WORKFLOWS_PROJECT }}
         run: |
           mkdir -p "$RUNNER_TEMP/production-database"
           docker compose run --rm --no-deps \

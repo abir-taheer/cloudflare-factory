@@ -31,7 +31,8 @@ export const apiJobCreateRoute = new OpenAPIHono<ApiHonoEnvironment>({
   runRouteEffect(
     context,
     createApiJob(context.req.valid("json").noteId, context.get("sessionUser").id).pipe(
-      Effect.map((job) => context.json({ ...job, status: "pending" }, apiHttpStatus.accepted)),
+      Effect.map((job) => AcceptedJobSchema.parse({ ...job, status: "pending" })),
+      Effect.map((response) => context.json(response, apiHttpStatus.accepted)),
     ),
     "api.jobs.create",
   ),

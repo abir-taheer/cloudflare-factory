@@ -269,6 +269,15 @@
   },
   "overrides": [
     {
+      "files": ["packages/api-client/src/api-paths.d.ts"],
+      "rules": {
+        "max-lines": "off",
+        "no-magic-numbers": "off",
+        "typescript/consistent-indexed-object-style": "off",
+        "factory/require-blank-lines-between-statement-types": "off"
+      }
+    },
+    {
       "files": ["**/*.ts", "**/*.tsx"],
       "rules": {
         "no-undef": "off"
@@ -278,8 +287,7 @@
       "files": [
         "apps/*/src/node-*.ts",
         "packages/platform/src/adapters/**/*.ts",
-        "scripts/**/*.ts",
-        "apps/api/src/portable-configuration.ts"
+        "scripts/**/*.ts"
       ],
       "env": {
         "node": true
@@ -488,7 +496,7 @@
       }
     },
     {
-      "files": ["apps/api/src/api-configuration.ts", "apps/api/src/portable-configuration.ts"],
+      "files": ["apps/api/src/api-configuration.ts"],
       "rules": {
         "factory/no-effect-run": "off"
       }

@@ -63,6 +63,8 @@ export const deployPreviewEnvironment = (
       );
     }
 
+    const urls = previewPublicUrls(manifest, credentials);
+
     manifest.status = "deploying";
     manifest.expiresAt = new Date(Date.now() + previewLifetimeMs).toISOString();
     yield* state.save(manifest);
@@ -72,8 +74,6 @@ export const deployPreviewEnvironment = (
     const directory = yield* previewIo("Preview temporary directory failed", () =>
       mkdtemp("/tmp/preview-deploy-"),
     );
-
-    const urls = previewPublicUrls(manifest, credentials);
 
     yield* Effect.gen(function* () {
       const { frontendAssets, secrets } = yield* preparePreviewRuntimeFiles(

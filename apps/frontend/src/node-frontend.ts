@@ -6,12 +6,16 @@ import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { pathToFileURL } from "node:url";
 import { ConfigProvider, Effect } from "effect";
 import { handleFrontendRequest } from "./frontend-http.js";
+import { type PublicFrontendConfiguration, PublicFrontendSchema } from "./lib/runtime-schema.js";
 import { parseNodeFrontendConfiguration } from "./frontend-configuration.js";
 
 const badRequestStatus = 400;
 
 /** Portable production server serves only built assets and public runtime configuration. */
-export function createFrontendServer(assetRoot = new URL("../dist/", import.meta.url)) {
+export function createFrontendServer(
+  configuration: PublicFrontendConfiguration,
+  assetRoot = new URL("../dist/", import.meta.url),
+) {
   return createServer({ requestTimeout: 20_000, headersTimeout: 10_000 }, (incoming, outgoing) => {
     const respond = Effect.tryPromise(async () => {
       const target = incoming.url ?? "/";
@@ -28,6 +32,11 @@ export function createFrontendServer(assetRoot = new URL("../dist/", import.meta
           {
             fetchAsset: async (request) => {
               const path = new URL(request.url).pathname;
+
+              if (path === "/runtime-config.json") {
+                return Response.json(PublicFrontendSchema.parse(configuration));
+              }
+
               const content = await readFile(new URL(path.slice(1), assetRoot));
               let contentType = "text/html";
 
@@ -74,7 +83,14 @@ export function createFrontendServer(assetRoot = new URL("../dist/", import.meta
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const configuration = Effect.runSync(parseNodeFrontendConfiguration(ConfigProvider.fromEnv()));
-  const server = createFrontendServer();
+
+  const server = createFrontendServer(
+    PublicFrontendSchema.parse({
+      API_URL: configuration.API_URL,
+      ENVIRONMENT: configuration.ENVIRONMENT,
+    }),
+  );
+
   server.listen(configuration.PORT, "0.0.0.0");
 
   for (const signal of ["SIGINT", "SIGTERM"] as const) {

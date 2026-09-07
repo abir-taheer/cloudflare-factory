@@ -1,14 +1,14 @@
 import { createServer } from "node:http";
-import { Effect, Layer, ManagedRuntime } from "effect";
+import { ConfigProvider, Effect, Layer, ManagedRuntime } from "effect";
 import { HttpEffect, HttpServer } from "effect/unstable/http";
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node";
 import { portablePlatformLayer } from "@factory/platform/portable";
 import { handleApiRequest } from "./api-handler.js";
 import { readApiConfiguration } from "./api-configuration.js";
-import { readPortableConfiguration } from "./portable-configuration.js";
+import { parsePortableConfiguration } from "@factory/platform/configuration";
 import { nodeAuthenticationLayer } from "./node-authentication.js";
 
-const configuration = readPortableConfiguration();
+const configuration = Effect.runSync(parsePortableConfiguration(ConfigProvider.fromEnv()));
 const apiConfiguration = readApiConfiguration();
 
 const server = Effect.scoped(

@@ -1,6 +1,7 @@
 name: cloudflare-factory
 x-app: &app
-  build: .
+  build: { context: ., target: development }
+  image: factory-development:local
   init: true
   security_opt: [no-new-privileges:true]
   cap_drop: [ALL]
@@ -9,6 +10,16 @@ x-app: &app
     - ./packages:/workspace/packages:ro
     - ./tests:/workspace/tests:ro
     - ./scripts:/workspace/scripts:ro
+    - dependencies:/workspace/node_modules
+    - api-dependencies:/workspace/apps/api/node_modules
+    - frontend-dependencies:/workspace/apps/frontend/node_modules
+    - workflows-dependencies:/workspace/apps/workflows/node_modules
+    - executor-dependencies:/workspace/apps/executor/node_modules
+    - api-client-dependencies:/workspace/packages/api-client/node_modules
+    - api-contract-dependencies:/workspace/packages/api-contract/node_modules
+    - auth-dependencies:/workspace/packages/auth/node_modules
+    - platform-dependencies:/workspace/packages/platform/node_modules
+    - lint-dependencies:/workspace/packages/lint-rules/node_modules
   environment: &environment
     ENVIRONMENT: dev
     TEMPORAL_NAMESPACE: default
@@ -31,28 +42,64 @@ x-app: &app
     temporal: { condition: service_healthy }
 services:
   database-migrate:
-    build: .
+    build: { context: ., target: development }
+    image: factory-development:local
     init: true
     command: [npm, run, db:migrate, --workspace, "@factory/platform"]
-    volumes: ["./packages:/workspace/packages:ro"]
+    volumes:
+      - ./packages:/workspace/packages:ro
+      - dependencies:/workspace/node_modules
+      - platform-dependencies:/workspace/packages/platform/node_modules
+      - auth-dependencies:/workspace/packages/auth/node_modules
     environment:
       DATABASE_URL: postgres://factory:local-development-only@postgres:5432/factory
     depends_on:
       postgres: { condition: service_healthy }
+  browser-dependencies:
+    build: { context: ., target: development }
+    image: factory-development:local
+    profiles: [tools]
+    # Docker seeds an empty dependency volume from this lockfile-built image before starting.
+    command: [node, --version]
+    volumes:
+      - dependencies:/workspace/node_modules
+      - api-dependencies:/workspace/apps/api/node_modules
+      - frontend-dependencies:/workspace/apps/frontend/node_modules
+      - workflows-dependencies:/workspace/apps/workflows/node_modules
+      - executor-dependencies:/workspace/apps/executor/node_modules
+      - api-client-dependencies:/workspace/packages/api-client/node_modules
+      - api-contract-dependencies:/workspace/packages/api-contract/node_modules
+      - auth-dependencies:/workspace/packages/auth/node_modules
+      - platform-dependencies:/workspace/packages/platform/node_modules
+      - lint-dependencies:/workspace/packages/lint-rules/node_modules
   browser-tests:
     image: mcr.microsoft.com/playwright:v1.63.0-noble
     profiles: [tools]
     init: true
     working_dir: /workspace
-    volumes: [".:/workspace:ro", "dependencies:/workspace/node_modules:ro"]
+    volumes:
+      - .:/workspace:ro
+      - dependencies:/workspace/node_modules:ro
+      - api-dependencies:/workspace/apps/api/node_modules:ro
+      - frontend-dependencies:/workspace/apps/frontend/node_modules:ro
+      - workflows-dependencies:/workspace/apps/workflows/node_modules:ro
+      - executor-dependencies:/workspace/apps/executor/node_modules:ro
+      - api-client-dependencies:/workspace/packages/api-client/node_modules:ro
+      - api-contract-dependencies:/workspace/packages/api-contract/node_modules:ro
+      - auth-dependencies:/workspace/packages/auth/node_modules:ro
+      - platform-dependencies:/workspace/packages/platform/node_modules:ro
+      - lint-dependencies:/workspace/packages/lint-rules/node_modules:ro
     environment:
       BASE_URL: http://frontend:5173
     command: [npx, playwright, test]
-    depends_on: [frontend, workflows]
+    depends_on:
+      browser-dependencies: { condition: service_completed_successfully }
+      frontend: { condition: service_started }
+      workflows: { condition: service_started }
   executor:
-    build: .
+    build: { context: ., target: executor }
+    image: factory-executor:local
     init: true
-    command: [node, --import, tsx, apps/executor/src/node-executor.ts]
     user: "65534:65534"
     read_only: true
     cap_drop: [ALL]
@@ -106,7 +153,18 @@ services:
     networks: [default, sandbox]
     profiles: [tools]
     user: root
-    volumes: [".:/workspace", "dependencies:/workspace/node_modules"]
+    volumes:
+      - .:/workspace
+      - dependencies:/workspace/node_modules
+      - api-dependencies:/workspace/apps/api/node_modules
+      - frontend-dependencies:/workspace/apps/frontend/node_modules
+      - workflows-dependencies:/workspace/apps/workflows/node_modules
+      - executor-dependencies:/workspace/apps/executor/node_modules
+      - api-client-dependencies:/workspace/packages/api-client/node_modules
+      - api-contract-dependencies:/workspace/packages/api-contract/node_modules
+      - auth-dependencies:/workspace/packages/auth/node_modules
+      - platform-dependencies:/workspace/packages/platform/node_modules
+      - lint-dependencies:/workspace/packages/lint-rules/node_modules
     depends_on: {}
     command: [npm, run, check]
   postgres:
@@ -161,6 +219,15 @@ services:
     volumes: ["temporal-data:/data"]
 volumes:
   dependencies:
+  api-dependencies:
+  frontend-dependencies:
+  workflows-dependencies:
+  executor-dependencies:
+  api-client-dependencies:
+  api-contract-dependencies:
+  auth-dependencies:
+  platform-dependencies:
+  lint-dependencies:
   postgres-data:
   redis-data:
   object-data:

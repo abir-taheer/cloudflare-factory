@@ -11,12 +11,20 @@ export function secureFrontendResponse(
   response: Response,
   apiOrigin = "",
   immutable = false,
+  nonce = "",
 ): Response {
   const headers = new Headers(response.headers);
 
+  let nonceSource = "";
+
+  if (nonce.length > 0) {
+    nonceSource = ` 'nonce-${nonce}'`;
+  }
+
+  // Emotion style tags require a nonce; MUI dynamic positioning needs style attributes.
   headers.set(
     "Content-Security-Policy",
-    `default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' ${apiOrigin}; img-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`,
+    `default-src 'none'; script-src 'self'; style-src 'self'; style-src-elem 'self'${nonceSource}; style-src-attr 'unsafe-inline'; connect-src 'self' ${apiOrigin}; img-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`,
   );
 
   headers.set("X-Content-Type-Options", "nosniff");
@@ -79,6 +87,24 @@ async function serveFrontendAssets(request: Request, services: FrontendServices)
   const response = await services.fetchAsset(
     new Request(new URL(isPage ? "/index.html" : url.pathname, url), { method: request.method }),
   );
+
+  if (isPage && response.ok && request.method === "GET") {
+    const nonceByteLength = 16;
+
+    const nonce = btoa(
+      String.fromCodePoint(...crypto.getRandomValues(new Uint8Array(nonceByteLength))),
+    );
+
+    const template = await response.text();
+    const html = template.replaceAll("__FRONTEND_NONCE__", nonce);
+
+    return secureFrontendResponse(
+      new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } }),
+      config.API_URL,
+      false,
+      nonce,
+    );
+  }
 
   return secureFrontendResponse(response, config.API_URL, isAsset && response.ok);
 }

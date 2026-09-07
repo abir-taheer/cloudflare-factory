@@ -5,7 +5,7 @@ import { CapabilityError } from "../capability-services.js";
 export const capabilityOperation = <A>(
   capability: string,
   operation: string,
-  run: () => Promise<A>,
+  run: (signal: AbortSignal) => Promise<A>,
 ) =>
   Effect.tryPromise({
     try: run,

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ConfigProvider, Effect } from "effect";
 import { parseApiConfiguration } from "./api-configuration.js";
-import { parsePortableConfiguration } from "./portable-configuration.js";
+import { parsePortableConfiguration } from "@factory/platform/configuration";
 
 const portableEnvironment = {
   ENVIRONMENT: "dev",
@@ -117,6 +117,18 @@ test("portable boundary rejects invalid endpoints, missing isolation and malform
     { SMTP_PORT: "65536" },
     { SMTP_PORT: "1.5" },
     { SMTP_PORT: "abc" },
+    { SMTP_SECURE: "yes" },
+    { SMTP_REQUIRE_TLS: "1" },
+    { SMTP_USERNAME: "user" },
+    { SMTP_PASSWORD: "secret" },
+    { SMTP_USERNAME: "", SMTP_PASSWORD: "secret" },
+    { SMTP_USERNAME: "user", SMTP_PASSWORD: "secret" },
+    {
+      SMTP_USERNAME: "user",
+      SMTP_PASSWORD: "secret",
+      SMTP_SECURE: "false",
+      SMTP_REQUIRE_TLS: "false",
+    },
     { TEMPORAL_ADDRESS: "temporal" },
     { TEMPORAL_NAMESPACE: "" },
     { TEMPORAL_TASK_QUEUE: "" },
@@ -136,4 +148,34 @@ test("portable boundary rejects invalid endpoints, missing isolation and malform
       /Invalid portable environment/u,
     );
   }
+});
+
+test("portable SMTP supports authenticated STARTTLS and implicit TLS without exposing invalid credentials", () => {
+  for (const secure of ["true", "false"]) {
+    const parsed = Effect.runSync(
+      parsePortableConfiguration(
+        ConfigProvider.fromEnvRecord({
+          ...portableEnvironment,
+          SMTP_SECURE: secure,
+          SMTP_REQUIRE_TLS: "true",
+          SMTP_USERNAME: "smtp-user",
+          SMTP_PASSWORD: "smtp-password",
+        }),
+      ),
+    );
+
+    assert.partialDeepStrictEqual(parsed, {
+      smtpSecure: secure === "true",
+      smtpRequireTls: true,
+      smtpAuth: { user: "smtp-user", pass: "smtp-password" },
+    });
+  }
+
+  const rejected = Effect.runSync(
+    parsePortableConfiguration(
+      ConfigProvider.fromEnvRecord({ ...portableEnvironment, SMTP_PASSWORD: "private-value" }),
+    ).pipe(Effect.flip),
+  );
+
+  assert.doesNotMatch(String(rejected), /private-value/u);
 });

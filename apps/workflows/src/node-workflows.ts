@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { Effect, ManagedRuntime, Schedule } from "effect";
+import { ConfigProvider, Effect, ManagedRuntime, Schedule } from "effect";
 import { NodeRuntime } from "@effect/platform-node";
 import { NativeConnection, Worker } from "@temporalio/worker";
 import { createClient } from "redis";
@@ -12,10 +12,25 @@ import {
   reclaimRedisJobs,
 } from "@factory/platform/portable";
 import { runNoteJob } from "@factory/platform/demo";
-import { readPortableConfiguration } from "../../api/src/portable-configuration.js";
+import { parsePortableConfiguration } from "@factory/platform/configuration";
 
 const queueReclaimIdleMs = 30_000;
-const configuration = readPortableConfiguration();
+const configuration = Effect.runSync(parsePortableConfiguration(ConfigProvider.fromEnv()));
+
+// tsx development compiles the source workflow; packaged Node loads the build-time bundle.
+function resolveWorkflowDefinition() {
+  const isSourceEntrypoint = import.meta.url.endsWith(".ts");
+
+  if (isSourceEntrypoint) {
+    return { workflowsPath: fileURLToPath(new URL("temporal-workflow.ts", import.meta.url)) };
+  }
+
+  return {
+    workflowBundle: {
+      codePath: fileURLToPath(new URL("temporal-workflow-bundle.js", import.meta.url)),
+    },
+  };
+}
 
 const program = Effect.gen(function* () {
   const runtime = yield* Effect.acquireRelease(
@@ -43,7 +58,7 @@ const program = Effect.gen(function* () {
       connection,
       namespace: configuration.temporalNamespace ?? "default",
       taskQueue: configuration.taskQueue,
-      workflowsPath: fileURLToPath(new URL("temporal-workflow.ts", import.meta.url)),
+      ...resolveWorkflowDefinition(),
       shutdownGraceTime: "10 seconds",
       shutdownForceTime: "20 seconds",
       activities: {

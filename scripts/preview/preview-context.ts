@@ -1,5 +1,6 @@
+import { createPreviewDomainProvider } from "./domains/preview-domain-provider.ts";
 import { Effect } from "effect";
-import { PreviewFailure, previewRecord, previewString } from "./preview-model.ts";
+import { PreviewFailure, previewString } from "./preview-model.ts";
 import {
   createPreviewCloudflare,
   loadPreviewCredentials,
@@ -28,17 +29,11 @@ export const loadPreviewContext = (local: boolean) =>
     }
 
     const credentials = yield* loadPreviewCredentials(local);
+
     yield* verifyPreviewAccount(credentials);
+    yield* createPreviewDomainProvider(credentials).verifyZone();
 
     const cf = createPreviewCloudflare(credentials);
-    const subdomain = previewRecord(yield* cf.request("/workers/subdomain"));
-
-    if (subdomain["subdomain"] !== credentials.workersSubdomain) {
-      return yield* Effect.fail(
-        new PreviewFailure({ operation: "Preview Workers subdomain mismatch" }),
-      );
-    }
-
     const owner = { accountId: credentials.accountId, repositoryId: String(metadata["id"]), pr: 1 };
     return { repository, owner, credentials, cf, state: createPreviewStateStore(credentials) };
   });

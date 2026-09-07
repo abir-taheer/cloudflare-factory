@@ -6,14 +6,14 @@ Use only `dev`, `preview` and `prod`. Production uses PostgreSQL through Hyperdr
 
 Create the GitHub environment `cloudflare-prod`, restrict it to `main`, and require release approval. Use four distinct Doppler projects: deployment CI, API, frontend, and workflows. Each uses a `prod` config; preview uses separate config values and a separate database project. There is no staging config.
 
-Configure these GitHub environment secrets:
+Configure these **named-environment secrets** in `cloudflare-prod`; private identity values must be masked in Actions step logs:
 
 - `DOPPLER_DEPLOY_TOKEN`, `DOPPLER_API_TOKEN`, `DOPPLER_FRONTEND_TOKEN`, `DOPPLER_WORKFLOWS_TOKEN`: read-only, config-scoped Doppler tokens for their respective projects.
 
-Configure these GitHub environment variables from your actual resources; do not commit their values:
-
 - Corresponding `DOPPLER_DEPLOY_PROJECT`, `DOPPLER_API_PROJECT`, `DOPPLER_FRONTEND_PROJECT`, `DOPPLER_WORKFLOWS_PROJECT`.
 - `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ACCOUNT_NAME`, `NEON_PROJECT_ID`, `NEON_PARENT_BRANCH_ID`. The independently configured project/parent values must match the CI Doppler config.
+
+Runtime environment key names stay unchanged. Workflows read these values only from `secrets`, with no `vars` fallback. Populate the environment secrets before running the migrated workflow, then remove the superseded private variables. Keep actual values out of source control. Public preview domain names remain variables in `cloudflare-preview`; this production workflow does not consume those preview pins.
 
 The CI project's `prod` config requires:
 

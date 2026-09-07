@@ -16,7 +16,7 @@
     "dev": "docker compose up --build --wait",
     "dev:down": "docker compose down",
     "check": "npm run lint && npm run test:unit",
-    "lint": "prettier --check . && node packages/lint-rules/path-conventions.mjs && node --test \"packages/lint-rules/tests/**/*.test.mjs\" && eslint --config packages/lint-rules/eslint-manifests.config.mjs package.json \"apps/*/package.json\" \"packages/*/package.json\" --max-warnings 0 && oxlint --type-aware --type-check --deny-warnings && npm run lint:react-hooks && npm run lint:react-doctor",
+    "lint": "prettier --check . && npm run check:generated --workspace @factory/api-client && node packages/lint-rules/path-conventions.mjs && node --test \"packages/lint-rules/tests/**/*.test.mjs\" && eslint --config packages/lint-rules/eslint-manifests.config.mjs package.json \"apps/*/package.json\" \"packages/*/package.json\" --max-warnings 0 && oxlint --type-aware --type-check --deny-warnings && npm run lint:react-hooks && npm run lint:react-doctor",
     "test:unit": "tsx --test \"scripts/**/*.test.ts\" packages/platform/src/*.test.ts apps/*/src/*.test.ts",
     "test:e2e": "playwright test",
     "preview:deploy": "tsx scripts/preview/preview-cli.ts deploy",

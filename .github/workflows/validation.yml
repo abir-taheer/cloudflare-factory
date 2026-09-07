@@ -42,17 +42,64 @@ jobs:
             --redact=100 --no-banner --ignore-gitleaks-allow \
             --gitleaks-ignore-path /tmp/no-ignores || scan_status=1
           exit "$scan_status"
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - name: Build Docker verification tooling
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          target: development
+          load: true
+          tags: factory-development:local
+          cache-from: type=gha,scope=tools-linux-amd64
+          cache-to: type=gha,mode=max,scope=tools-linux-amd64
       - name: Lint first (strict rules, plugin tests, pinned manifests)
-        run: docker compose run --rm --no-deps --build tools npm run lint
+        run: docker compose run --rm --no-deps tools npm run lint
+      - name: Build API runtime image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          target: api
+          load: true
+          tags: factory-api:local
+          cache-from: type=gha,scope=api-linux-amd64
+          cache-to: type=gha,mode=max,scope=api-linux-amd64
+      - name: Build frontend runtime image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          target: frontend
+          load: true
+          tags: factory-frontend:local
+          cache-from: type=gha,scope=frontend-linux-amd64
+          cache-to: type=gha,mode=max,scope=frontend-linux-amd64
+      - name: Build workflows runtime image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          target: workflows
+          load: true
+          tags: factory-workflows:local
+          cache-from: type=gha,scope=workflows-linux-amd64
+          cache-to: type=gha,mode=max,scope=workflows-linux-amd64
+      - name: Build executor runtime image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          target: executor
+          load: true
+          tags: factory-executor:local
+          cache-from: type=gha,scope=executor-linux-amd64
+          cache-to: type=gha,mode=max,scope=executor-linux-amd64
       - name: Start portable infrastructure and apps
-        run: docker compose up --build --wait --wait-timeout 240
+        run: docker compose -f compose.yaml -f compose.test.yaml up --wait --wait-timeout 240
       - name: Unit and all real-service integration tests
         run: >-
           docker compose run --rm --no-deps
           -e PLATFORM_INTEGRATION=1 -e PLATFORM_STORAGE_INTEGRATION=1 -e PLATFORM_WORKFLOW_INTEGRATION=1
+          -e PLATFORM_EXECUTOR_INTEGRATION=1 -e EXECUTOR_URL=http://executor:8090/execute -e EXECUTOR_TOKEN=local-executor-development-only
           tools npm run test:unit
       - name: Browser blackbox tests
-        run: docker compose run --rm browser-tests
+        run: docker compose -f compose.yaml -f compose.test.yaml run --rm browser-tests
       - name: Stop isolated CI infrastructure
         if: always()
-        run: docker compose down --volumes --remove-orphans
+        run: docker compose -f compose.yaml -f compose.test.yaml down --volumes --remove-orphans
