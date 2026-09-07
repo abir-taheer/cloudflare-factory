@@ -28,7 +28,7 @@
     "@aws-sdk/client-s3": "3.1127.0",
     "@cloudflare/sandbox": "0.12.9",
     "@temporalio/client": "1.23.0",
-    "drizzle-orm": "1.0.0-rc.4",
+    "drizzle-orm": "1.0.0-rc.5-169397b",
     "effect": "4.0.0-rc.112",
     "nodemailer": "10.0.0",
     "pg": "8.23.0",
