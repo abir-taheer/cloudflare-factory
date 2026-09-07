@@ -4,7 +4,7 @@ import type { PreviewOwner } from "../preview-model.ts";
 import type { PreviewCloudflare, PreviewCredentials } from "../cloudflare/preview-cloudflare.ts";
 import type { PreviewStateStore } from "./preview-state.ts";
 import { previewGithubRequest } from "../preview-github.ts";
-import { cleanupPreviewEnvironment } from "./preview-cleanup.ts";
+import { cleanupPreviewEnvironment, previewCleanupRetryPolicy } from "./preview-cleanup.ts";
 
 /** Reconcile all manifests, including failed creates; expiry never closes a pull request. */
 export const reconcilePreviewEnvironments = (
@@ -36,7 +36,9 @@ export const reconcilePreviewEnvironments = (
           Date.parse(manifest.expiresAt) <= Date.now() ||
           manifest.status === "deleting"
         ) {
-          yield* cleanupPreviewEnvironment(manifest, credentials, cf, state);
+          yield* cleanupPreviewEnvironment(manifest, credentials, cf, state).pipe(
+            Effect.retry(previewCleanupRetryPolicy),
+          );
         }
 
         return yield* Effect.void;

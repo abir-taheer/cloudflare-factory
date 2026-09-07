@@ -5,7 +5,10 @@ import { loadPreviewContext } from "./preview-context.ts";
 import { previewPublicUrls } from "./cloudflare/preview-worker-config.ts";
 import { verifyPreviewDeployment } from "./auth/preview-verify.ts";
 import { deployPreviewEnvironment } from "./lifecycle/preview-deploy.ts";
-import { cleanupPreviewEnvironment } from "./lifecycle/preview-cleanup.ts";
+import {
+  cleanupPreviewEnvironment,
+  previewCleanupRetryPolicy,
+} from "./lifecycle/preview-cleanup.ts";
 import { reconcilePreviewEnvironments } from "./lifecycle/preview-reconcile.ts";
 import { readPreviewPullRequest, resolvePreviewRun } from "./preview-github.ts";
 
@@ -162,7 +165,9 @@ export const runPreviewCommand = (args: string[]) =>
             const manifest = yield* state.load(owner);
 
             if (manifest) {
-              yield* cleanupPreviewEnvironment(manifest, credentials, cf, state);
+              yield* cleanupPreviewEnvironment(manifest, credentials, cf, state).pipe(
+                Effect.retry(previewCleanupRetryPolicy),
+              );
             } else {
               process.stdout.write("Preview has no ownership manifest; no resources deleted");
             }

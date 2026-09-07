@@ -1,9 +1,13 @@
+import { detachPreviewQueueConsumer } from "./preview-queue-consumer-cleanup.ts";
 import { cleanupPreviewDomains } from "../domains/preview-domain-cleanup.ts";
-import { Effect } from "effect";
+import { Effect, Schedule } from "effect";
 import { PreviewFailure, previewResource } from "../preview-model.ts";
 import type { PreviewManifest, PreviewResource } from "../preview-model.ts";
 import type { PreviewCloudflare, PreviewCredentials } from "../cloudflare/preview-cloudflare.ts";
 import type { PreviewStateStore } from "./preview-state.ts";
+
+/** Control-plane deletion readbacks may lag; callers retain the lifecycle lock during retries. */
+export const previewCleanupRetryPolicy = { times: 20, schedule: Schedule.spaced("3 seconds") };
 
 /** A missing manifest or a name/ID mismatch never authorizes deleting a resource. */
 export const deletePreviewResource = (
@@ -113,6 +117,8 @@ export const cleanupPreviewEnvironment = (
         new PreviewFailure({ operation: "Preview Worker still has unowned domain attachments" }),
       );
     }
+
+    yield* detachPreviewQueueConsumer(manifest, cf);
 
     const failures: string[] = [];
 

@@ -52,6 +52,16 @@ function lifecycleFixture(manifest: PreviewManifest) {
   );
 
   const failDeletion = new Set<string>();
+
+  const consumers = [
+    {
+      consumer_id: "e".repeat(32),
+      type: "worker",
+      script_name: previewResource(manifest, "workflows").name,
+    },
+  ];
+
+  const objects = new Map([["retained-note", "user content"]]);
   let stored = structuredClone(manifest);
 
   const state: PreviewStateStore = {
@@ -61,14 +71,24 @@ function lifecycleFixture(manifest: PreviewManifest) {
         stored = structuredClone(value);
       }),
     list: () => Effect.succeed([structuredClone(stored)]),
-    emptyBucket: () => Effect.void,
+    emptyBucket: () =>
+      Effect.sync(() => {
+        objects.clear();
+      }),
     lock: () => Effect.succeed("lock"),
     unlock: () => Effect.void,
   };
 
   const cf: PreviewCloudflare = {
-    request: () => Effect.succeed(null),
-    list: () => Effect.succeed([]),
+    request: (path, method) =>
+      Effect.sync(() => {
+        if (method === "DELETE" && path.includes("/consumers/")) {
+          consumers.length = 0;
+        }
+
+        return null;
+      }),
+    list: (path) => Effect.succeed(path.endsWith("/consumers") ? consumers : []),
     lookupResource: (resource) => Effect.succeed(live.get(resource.name) ?? null),
     create: (resource) =>
       Effect.sync(() => {
@@ -76,6 +96,12 @@ function lifecycleFixture(manifest: PreviewManifest) {
         return resource.name;
       }),
     remove: (resource) => {
+      const attachedConsumer = consumers.some((consumer) => consumer.script_name === resource.name);
+
+      if (attachedConsumer) {
+        return Effect.fail(new PreviewFailure({ operation: "Worker still consumes queue" }));
+      }
+
       if (failDeletion.has(resource.name)) {
         return Effect.fail(new PreviewFailure({ operation: "Synthetic provider outage" }));
       }
@@ -90,7 +116,7 @@ function lifecycleFixture(manifest: PreviewManifest) {
     },
   };
 
-  return { cf, state, live, failDeletion };
+  return { cf, state, live, failDeletion, objects };
 }
 
 test("manifest rejects unknown resources, foreign owners and changed deletion names", () => {
@@ -145,6 +171,7 @@ test("failed compute deletion retains data and a retry finishes independent clea
 
   assert.equal(manifest.status, "deleting");
   assert.ok(fixture.live.has(previewResource(manifest, "objects").name));
+  assert.equal(fixture.objects.get("retained-note"), "user content");
   fixture.failDeletion.clear();
 
   await Effect.runPromise(
