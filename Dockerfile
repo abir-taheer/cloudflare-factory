@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:24-trixie-slim@sha256:50c3b2f6988dfc307b86e5301d69611af31f4789bdf232863b07d3b02fe55ae0 AS manifests
+FROM node:24-trixie-slim@sha256:6950b66b4c0cb0151ce89fa75074673850763d096b044f422c6729b588dd4956 AS manifests
 WORKDIR /workspace
 COPY package.json package-lock.json ./
 COPY apps/api/package.json ./apps/api/
@@ -39,7 +39,7 @@ COPY packages/platform ./packages/platform
 COPY apps/workflows ./apps/workflows
 RUN npm run build:node --workspace=@factory/workflows
 
-FROM node:24-trixie-slim@sha256:50c3b2f6988dfc307b86e5301d69611af31f4789bdf232863b07d3b02fe55ae0 AS slim-runtime
+FROM node:24-trixie-slim@sha256:6950b66b4c0cb0151ce89fa75074673850763d096b044f422c6729b588dd4956 AS slim-runtime
 WORKDIR /app
 ENV NODE_ENV=production
 USER 65534:65534
