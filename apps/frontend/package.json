@@ -23,7 +23,7 @@
     "@mui/material": "9.4.0",
     "@tanstack/react-query": "5.102.8",
     "better-auth": "1.7.3",
-    "effect": "4.0.0-rc.112",
+    "effect": "4.0.0-rc.115",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-router-dom": "7.18.3",
