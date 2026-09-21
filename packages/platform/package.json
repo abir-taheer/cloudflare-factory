@@ -29,7 +29,7 @@
     "@cloudflare/sandbox": "0.12.9",
     "@temporalio/client": "1.23.0",
     "drizzle-orm": "1.0.0-rc.4",
-    "effect": "4.0.0-rc.112",
+    "effect": "4.0.0-rc.115",
     "nodemailer": "10.0.0",
     "pg": "8.23.0",
     "redis": "6.2.1",

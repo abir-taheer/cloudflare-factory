@@ -4,12 +4,12 @@
   "type": "module",
   "version": "0.1.0",
   "dependencies": {
-    "@effect/platform-node": "4.0.0-rc.112",
+    "@effect/platform-node": "4.0.0-rc.115",
     "@factory/api-contract": "0.0.0",
     "@factory/auth": "0.0.0",
     "@factory/platform": "0.0.0",
     "@hono/zod-openapi": "1.6.3",
-    "effect": "4.0.0-rc.112",
+    "effect": "4.0.0-rc.115",
     "hono": "4.13.7",
     "pg": "8.23.0",
     "zod": "4.5.4"

@@ -8,7 +8,7 @@
     "@factory/platform": "0.0.0",
     "@temporalio/worker": "1.23.0",
     "@temporalio/workflow": "1.23.0",
-    "effect": "4.0.0-rc.112",
+    "effect": "4.0.0-rc.115",
     "redis": "6.2.1"
   },
   "scripts": {
