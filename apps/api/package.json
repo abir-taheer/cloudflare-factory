@@ -10,9 +10,9 @@
     "@factory/platform": "0.0.0",
     "@hono/zod-openapi": "1.6.3",
     "effect": "4.0.0-rc.112",
-    "hono": "4.13.7",
+    "hono": "4.13.9",
     "pg": "8.23.0",
-    "zod": "4.5.4"
+    "zod": "4.6.5"
   },
   "scripts": {
     "dev": "tsx watch src/node_api.ts",

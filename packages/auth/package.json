@@ -11,12 +11,12 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "@better-auth/drizzle-adapter": "1.7.3",
+    "@better-auth/drizzle-adapter": "1.7.6",
     "@factory/platform": "0.0.0",
-    "better-auth": "1.7.3",
+    "better-auth": "1.7.6",
     "drizzle-orm": "1.0.0-rc.4",
     "effect": "4.0.0-rc.112",
     "pg": "8.23.0",
-    "zod": "4.5.4"
+    "zod": "4.6.5"
   }
 }
