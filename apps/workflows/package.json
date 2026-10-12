@@ -6,10 +6,10 @@
   "dependencies": {
     "@cloudflare/sandbox": "0.12.9",
     "@factory/platform": "0.0.0",
-    "@temporalio/worker": "1.23.0",
-    "@temporalio/workflow": "1.23.0",
+    "@temporalio/worker": "1.24.0",
+    "@temporalio/workflow": "1.24.0",
     "effect": "4.0.0-rc.112",
-    "redis": "6.2.1"
+    "redis": "6.3.0"
   },
   "scripts": {
     "dev": "tsx watch src/node_workflows.ts",
