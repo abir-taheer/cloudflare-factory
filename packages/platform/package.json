@@ -30,7 +30,7 @@
     "@temporalio/client": "1.23.0",
     "drizzle-orm": "1.0.0-rc.4",
     "effect": "4.0.0-rc.112",
-    "nodemailer": "10.0.0",
+    "nodemailer": "10.0.9",
     "pg": "8.23.0",
     "redis": "6.2.1",
     "zod": "4.5.4"

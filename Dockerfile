@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:24-trixie-slim@sha256:50c3b2f6988dfc307b86e5301d69611af31f4789bdf232863b07d3b02fe55ae0 AS manifests
+FROM node:24-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e0586c7cf7726daaeabc1bea AS manifests
 WORKDIR /workspace
 COPY package.json package-lock.json ./
 COPY apps/api/package.json ./apps/api/
@@ -39,13 +39,13 @@ COPY packages/platform ./packages/platform
 COPY apps/workflows ./apps/workflows
 RUN npm run build:node --workspace=@factory/workflows
 
-FROM node:24-trixie-slim@sha256:50c3b2f6988dfc307b86e5301d69611af31f4789bdf232863b07d3b02fe55ae0 AS slim-runtime
+FROM node:24-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e0586c7cf7726daaeabc1bea AS slim-runtime
 WORKDIR /app
 ENV NODE_ENV=production
 USER 65534:65534
 ENTRYPOINT ["node"]
 
-FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:774b7d020b24214835769e24c3544835526cd0288f0b094eae48e8b2c2429a79 AS distroless-runtime
+FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:78f07ef1b5ea71ad7c055df15d0dd8997f2d288f9158623c4d4ae3d765b7d50d AS distroless-runtime
 WORKDIR /app
 ENV NODE_ENV=production
 

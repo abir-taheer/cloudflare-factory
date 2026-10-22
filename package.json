@@ -47,6 +47,10 @@
   },
   "overrides": {
     "redis": "6.2.1",
-    "@cloudflare/workers-types": "5.20260907.1"
+    "@cloudflare/workers-types": "5.20260907.1",
+    "miniflare": {
+      "sharp": "0.35.5",
+      "undici": "7.30.1"
+    }
   }
 }
